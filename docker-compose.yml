@@ -1,0 +1,109 @@
+# Local development stack. Usage: docs/DEVELOPMENT.md
+#   docker compose up --build        # everything
+#   docker compose up -d postgres redis   # only infrastructure (run apps on the host)
+
+name: tastify
+
+x-backend-common: &backend-common
+  build:
+    context: ./backend
+    target: dev
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    # Inside the compose network services are reached by name, not localhost.
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-tastify}:${POSTGRES_PASSWORD:-tastify}@postgres:5432/${POSTGRES_DB:-tastify}
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/1
+    CELERY_RESULT_BACKEND: redis://redis:6379/2
+    # File events do not cross the Windows/macOS -> Docker VM boundary reliably; poll instead.
+    WATCHFILES_FORCE_POLLING: "true"
+  volumes:
+    - ./backend:/app
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tastify}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tastify}
+      POSTGRES_DB: ${POSTGRES_DB:-tastify}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Runs once, on first start with an empty volume: creates the test database.
+      - ./infrastructure/docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    <<: *backend-common
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    <<: *backend-common
+    command:
+      ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "app"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    <<: *backend-common
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--loglevel=INFO"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      # Called from the browser, so it points at the host-published backend port.
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./frontend:/app
+      # Keep the container's own node_modules and build cache instead of the host's.
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:

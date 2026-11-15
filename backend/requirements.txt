@@ -1,0 +1,11 @@
+# Runtime dependencies (installed in the production image).
+# Direct dependencies are pinned exactly; bump deliberately and run the full test suite.
+alembic==1.20.1
+asyncpg==0.32.0
+celery[redis]==5.7.0
+fastapi==0.163.1
+pydantic==2.14.3
+pydantic-settings==2.16.3
+redis==8.1.0
+SQLAlchemy[asyncio]==2.1.8
+uvicorn[standard]==0.54.0

@@ -18,3 +18,6 @@ marked _Superseded_ and linked to the ADR that replaces it.
 | [ADR-009](ADR-009-docker-development-deployment.md)  | Docker-based development and deployment            | Accepted |
 | [ADR-010](ADR-010-test-driven-core-logic.md)         | Test-driven development for core business logic    | Accepted |
 | [ADR-011](ADR-011-development-tooling.md)            | Development tooling and runtime versions           | Accepted |
+| [ADR-012](ADR-012-ml-package-reuses-backend-data-layer.md)    | The ML package reuses the backend's data layer     | Accepted |
+| [ADR-013](ADR-013-data-sources-and-licensing-posture.md)      | Initial data sources and licensing posture         | Accepted |
+| [ADR-014](ADR-014-entity-resolution-policy.md)                | Conservative, explainable entity resolution        | Accepted |

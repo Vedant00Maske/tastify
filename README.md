@@ -4,7 +4,7 @@ Personalized music discovery and playlist generation. TASTIFY learns individual 
 listening history, interactions, moods, genres and discovery preferences, and owns its recommendation
 intelligence. Music platforms serve only as metadata, user-data and playlist-export providers.
 
-**Status:** Milestone 0 (engineering foundation) complete. See [docs/ROADMAP.md](docs/ROADMAP.md).
+**Status:** Milestone 1 (music data foundation) complete, pending review. See [docs/ROADMAP.md](docs/ROADMAP.md).
 The approved product and engineering specification is [TASTIFY_v0.1.md](TASTIFY_v0.1.md).
 
 ## Tech stack
@@ -15,7 +15,7 @@ The approved product and engineering specification is [TASTIFY_v0.1.md](TASTIFY_
 | Backend         | FastAPI, Pydantic v2, SQLAlchemy 2 (async), Alembic                   |
 | Data            | PostgreSQL 17 + pgvector, Redis 7                                     |
 | Background jobs | Celery (Redis broker)                                                 |
-| ML (planned)    | pandas, NumPy, scikit-learn, PyTorch, MLflow                          |
+| Data / ML       | pandas, pyarrow, NumPy, scikit-learn (PyTorch and MLflow planned)     |
 | Quality         | ruff, mypy, pytest · ESLint, Prettier, Vitest, Playwright · pre-commit |
 | Delivery        | Docker, Docker Compose, GitHub Actions                                |
 
@@ -35,6 +35,15 @@ docker compose up --build
 For hybrid mode (apps on the host, faster reloads), tests and everyday commands, see
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+Build the music catalogue from public datasets (about 8 GB of downloads, see
+[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md)):
+
+```bash
+cd ml
+python -m tastify_ml download
+python -m tastify_ml catalogue all     # writes docs/reports/data-quality.md
+```
+
 ## Repository layout
 
 ```text
@@ -50,7 +59,7 @@ tastify/
 │   │   └── workers/       Celery app and tasks
 │   ├── alembic/           database migrations
 │   └── tests/             unit/ and integration/
-├── ml/                    offline data, feature, training and evaluation pipelines
+├── ml/                    offline pipelines (tastify_ml): ingestion, normalization, quality, models
 ├── infrastructure/        docker/ (service config), deployment/, monitoring/
 ├── docs/                  engineering documentation and ADRs
 ├── scripts/               developer and operations scripts
@@ -68,6 +77,8 @@ tastify/
 | [DATABASE](docs/DATABASE.md)                       | Entities, relationships, rules, indexes, migration workflow |
 | [API_SPEC](docs/API_SPEC.md)                       | REST endpoints and implementation status                 |
 | [ML_PIPELINE](docs/ML_PIPELINE.md)                 | Data pipeline and recommendation engine design           |
+| [DATA_SOURCES](docs/DATA_SOURCES.md)               | Dataset provenance, licences, privacy, entity resolution |
+| [Data quality report](docs/reports/data-quality.md) | Latest catalogue quality report (generated)              |
 | [INTEGRATIONS](docs/INTEGRATIONS.md)               | Provider abstraction and provider constraints            |
 | [TESTING](docs/TESTING.md)                         | Testing strategy and how to run tests                    |
 | [SECURITY](docs/SECURITY.md)                       | Security and privacy architecture                        |

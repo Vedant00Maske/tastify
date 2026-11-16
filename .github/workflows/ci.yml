@@ -88,6 +88,43 @@ jobs:
           path: backend/coverage.xml
           if-no-files-found: ignore
 
+  ml:
+    name: ML · lint, types, pipeline tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: tastify
+          POSTGRES_PASSWORD: tastify
+          POSTGRES_DB: tastify_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tastify -d tastify_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://tastify:tastify@127.0.0.1:5432/tastify_test
+      TEST_DATABASE_URL: postgresql+asyncpg://tastify:tastify@127.0.0.1:5432/tastify_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            ml/requirements*.txt
+            backend/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check --output-format=github .
+      - run: ruff format --check .
+      - run: mypy tastify_ml tests
+      - name: Unit and integration tests
+        run: pytest --cov --cov-report=term-missing
+
   frontend-quality:
     name: Frontend · lint, format, types, tests, build
     runs-on: ubuntu-latest
@@ -152,6 +189,7 @@ jobs:
         run: |
           pip install pip-audit
           pip-audit -r backend/requirements.txt
+          cd ml && pip-audit -r requirements.txt
       - uses: actions/setup-node@v7
         with:
           node-version-file: frontend/.nvmrc

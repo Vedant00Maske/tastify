@@ -1,0 +1,5 @@
+# Everything needed to develop and test both the backend and the ML pipelines in one virtualenv.
+-r requirements.txt
+-r ../backend/requirements-dev.txt
+
+pandas-stubs==3.1.0.261029

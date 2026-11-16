@@ -65,6 +65,18 @@ npm ci
 npm run dev
 ```
 
+**ML pipelines** (`ml/`, same virtualenv as the backend)
+
+```bash
+pip install -r ml/requirements-dev.txt     # pandas, pyarrow, scikit-learn on top of the backend deps
+cd ml
+python -m tastify_ml download              # ~8 GB of public dumps into ml/data/raw (git-ignored)
+python -m tastify_ml catalogue all         # build the catalogue; see docs/ML_PIPELINE.md
+```
+
+`.env` must contain `LISTENS_PSEUDONYM_KEY` (a long random secret) before the `listens` stage runs.
+Downloads and processed data live on the drive holding the repository.
+
 ## Everyday commands
 
 | Task                         | Backend (`backend/`)                          | Frontend (`frontend/`)   |

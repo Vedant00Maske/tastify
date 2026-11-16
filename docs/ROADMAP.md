@@ -3,6 +3,37 @@
 > Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§16).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
+## Current roadmap (revised 2026-11-16)
+
+This plan supersedes the milestone numbering of the original §16 below, which is kept for reference.
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| 0 – Engineering Foundation | Repository, tooling, CI, Docker, migrations, documentation | Done |
+| 1 – Music Data Foundation | Data source selection, catalogue ingestion, cleaning, normalization, entity resolution, database design | Done (pending review) |
+| 2 – Recommendation Engine V1 | Popularity baseline, content-based recommendations, similarity search, offline evaluation | Planned |
+| 3 – Personalized Hybrid Recommendation | Taste profiles, collaborative filtering, embeddings, candidate generation, ranking, diversity | Planned |
+| 4 – Complete User Application | Authentication, onboarding, discovery dashboard, playlists, feedback, personalized categories | Planned |
+| 5 – Music Platform Integrations | ListenBrainz, MusicBrainz, Spotify and YouTube integrations, subject to API permissions | Planned |
+| 6 – Advanced Recommendation Intelligence | Context-aware ranking, cold-start improvements, natural-language playlists, experimentation, optimization | Planned |
+| 7 – Production Hardening | Security audits, performance, scalability, observability, deployment, data recovery | Planned |
+| 8 – Public Beta and Growth | Real users, feedback collection, A/B testing, model improvement, product analytics | Planned |
+
+### Milestone 1 deliverables
+
+Acceptance criterion: records from multiple sources can be ingested, and a unified track record can
+be retrieved without depending on a specific provider.
+
+- [x] Data sources selected, with provenance and licensing documented (DATA_SOURCES.md, ADR-013)
+- [x] Normalized relational schema: canonical tracks/artists/albums, external ids, genres,
+      features, provenance, match review (DATABASE.md, migration `65ea8b207eac`)
+- [x] Entity resolution logic with an explicit policy and review queue (ADR-014)
+- [x] Automated ingestion scripts: `python -m tastify_ml download` and `catalogue <stage>`
+- [x] Reproducible cleaning and normalization pipeline (checksummed raw inputs, idempotent stages)
+- [x] Data quality checks and report (`catalogue quality`, docs/reports/data-quality.md)
+- [x] Provider-independent catalogue API: `/tracks/search`, `/tracks/lookup`, `/tracks/{id}`, `/artists/{id}`
+- [x] Sample catalogue built from real data, with the quality report committed (reports/data-quality.md)
+
 ## 16. Development Roadmap
 
 ### Milestone 0 – Engineering Foundation

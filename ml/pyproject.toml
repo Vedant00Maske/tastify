@@ -1,0 +1,52 @@
+[project]
+name = "tastify-ml"
+version = "0.1.0"
+description = "TASTIFY offline data pipelines, recommendation models and evaluation."
+requires-python = ">=3.11"
+# Dependencies are pinned in requirements.txt and requirements-dev.txt (see ADR-011, ADR-012).
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["data"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "S", "C4", "SIM", "PT", "T20", "ASYNC", "RUF", "NPY", "PD"]
+# PD011 (.values) misfires on pyarrow and dict objects.
+ignore = ["PD011"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S311"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tastify_ml", "app"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "../backend"
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "scipy.*", "zstandard.*", "pyarrow.*", "pgvector.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "../backend"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+markers = [
+  "integration: needs running PostgreSQL (deselect with -m 'not integration')",
+]
+
+[tool.coverage.run]
+source = ["tastify_ml"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

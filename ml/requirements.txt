@@ -1,0 +1,9 @@
+# Offline data and ML pipelines. Includes the backend runtime dependencies because the pipelines
+# reuse the backend's data layer (ADR-012). Direct dependencies are pinned exactly.
+-r ../backend/requirements.txt
+
+numpy==2.4.6
+pandas==3.1.1
+pyarrow==26.0.1
+scikit-learn==1.9.1
+zstandard==0.25.0

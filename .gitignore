@@ -22,6 +22,8 @@ htmlcov/
 # ML artifacts (datasets and models are versioned outside git, see docs/ML_PIPELINE.md)
 ml/data/raw/
 ml/data/processed/
+ml/data/reports/
+ml/data/models/
 mlruns/
 *.pt
 *.pth

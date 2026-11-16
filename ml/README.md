@@ -1,23 +1,30 @@
 # TASTIFY ML
 
-Offline data and machine-learning pipelines (ADR-008). The code runs as batch jobs, independently of
-the web application's business logic, and hands registered models and precomputed artifacts to the
-backend for inference. Implementation starts in Milestone 1 (data foundation) and Milestone 2
-(recommendation v1). See [docs/ML_PIPELINE.md](../docs/ML_PIPELINE.md).
+Offline data and machine-learning pipelines (ADR-008). They run as batch jobs, separate from the web
+application, and reuse the backend's data layer: schema, entity resolution and provider clients
+(ADR-012). See [docs/ML_PIPELINE.md](../docs/ML_PIPELINE.md) and
+[docs/DATA_SOURCES.md](../docs/DATA_SOURCES.md).
 
-| Folder                | Responsibility                                                                         |
-| --------------------- | -------------------------------------------------------------------------------------- |
-| `data/ingestion/`     | Pull from interactions, MusicBrainz, ListenBrainz and permitted provider/open datasets |
-| `data/validation/`    | Schema, identifier, timestamp, duplicate and range checks                              |
-| `data/cleaning/`      | Deduplication, text standardisation, invalid-record removal                            |
-| `data/normalization/` | Genre normalisation, artist/track entity resolution (ISRC, MBID, never title alone)    |
-| `features/`           | Track and user feature engineering                                                     |
-| `embeddings/`         | Track/user embedding generation (stored in pgvector)                                   |
-| `models/`             | `popularity/` baseline, `content_based/`, `collaborative/`, `hybrid/`                  |
-| `ranking/`            | Scoring and diversity re-ranking experiments                                           |
-| `evaluation/`         | Precision@K, Recall@K, NDCG@K, MAP@K, coverage, diversity, novelty vs. baseline        |
-| `experiments/`        | Experiment configs and notebooks (tracked with MLflow)                                 |
-| `inference/`          | Packaging of models and artifacts consumed by the backend                              |
+```bash
+pip install -r requirements-dev.txt        # into the backend virtualenv
+python -m tastify_ml download              # raw public datasets -> data/raw (checksummed)
+python -m tastify_ml catalogue all         # Milestone 1 catalogue pipeline
+pytest                                     # needs PostgreSQL for tests marked `integration`
+```
 
-Datasets and model binaries are not committed to git (see `.gitignore`). Record their provenance
-and versions per the Definition of Done for ML features.
+| Package | Responsibility |
+| --- | --- |
+| `tastify_ml/data/download.py`, `data/sources.py` | Dataset registry (licences), discovery and resumable, verified downloads |
+| `tastify_ml/data/ingestion/` | Readers: ListenBrainz dumps and metadata, MusicBrainz canonical dump, AcousticBrainz, FMA |
+| `tastify_ml/data/normalization/` | Vectorized matching keys and listen-to-recording mapping |
+| `tastify_ml/data/quality/` | Data quality checks and reports |
+| `tastify_ml/pipelines/` | Stage orchestration with job/provenance bookkeeping |
+
+| Data folder (git-ignored) | Contents |
+| --- | --- |
+| `data/raw/<source>/` | Source files exactly as published |
+| `data/processed/` | Derived Parquet datasets (pseudonymised listens, mappings, interactions) |
+| `data/reports/` | JSON history of data quality runs |
+
+Datasets and model binaries are never committed. Their provenance is recorded in the database
+(`data_sources`, `ingestion_jobs`, `raw_records`).

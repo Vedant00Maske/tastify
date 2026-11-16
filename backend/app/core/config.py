@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # Parsed from a JSON array, e.g. CORS_ORIGINS='["http://localhost:3000"]'.
     cors_origins: list[str] = ["http://localhost:3000"]
 
+    # MusicBrainz/ListenBrainz/MetaBrainz require a User-Agent identifying the app and a contact.
+    metabrainz_user_agent: str = "TASTIFY/0.1.0 ( https://github.com/Vedant00Maske/tastify )"
+
 
 @lru_cache
 def get_settings() -> Settings:

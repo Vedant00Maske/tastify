@@ -128,8 +128,13 @@ Tooling set up in Milestone 0:
 | Frontend unit / component | Vitest, React Testing Library, jsdom   | `npm test` (`npm run test:watch` while developing)                    |
 | Frontend coverage         | @vitest/coverage-v8                    | `npm run test:coverage`                                               |
 | End-to-end                | Playwright (Chromium)                  | `npm run test:e2e` (first run: `npm run test:e2e:install`)            |
+| ML pipelines              | pytest (+ PostgreSQL for `integration`) | `cd ml && pytest` (unit only: `pytest -m "not integration"`)       |
 
 ### Layout and conventions
+
+- `ml/tests/` covers the pipelines with small synthetic fixtures (tar.zst dumps, CSVs, zip archives
+  built in the test), so no downloads are needed. `test_keys.py` checks that the vectorized
+  matching keys match the backend's Python rules exactly.
 
 - `backend/tests/unit/` is fast, with no network. External dependencies are replaced with fakes
   through `app.dependency_overrides`.

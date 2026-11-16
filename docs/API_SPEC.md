@@ -122,7 +122,11 @@ Scores and reasons must be based on actual model outputs and recorded evidence.
 | -------------------------- | ----------- | ------------------------------------------------------------------------------------------------------- |
 | `GET /api/v1/health`       | Implemented | Liveness. Returns `{"status": "ok", "version": "..."}` and never touches dependencies.                 |
 | `GET /api/v1/health/ready` | Implemented | Readiness. `200` when PostgreSQL and Redis respond within 2 s, otherwise `503` with per-dependency status. |
-| All other endpoints above  | Planned     | Delivered in Milestones 1–5 (see ROADMAP.md).                                                           |
+| `GET /api/v1/tracks/search?q=&limit=` | Implemented (M1) | Fuzzy search over "artist title" (pg_trgm). `q` 2–200 chars, `limit` 1–50. |
+| `GET /api/v1/tracks/lookup?provider=&external_id=` | Implemented (M1) | The unified track for any provider identifier (`musicbrainz`, `isrc`, `fma`, ...). 404 if unknown. |
+| `GET /api/v1/tracks/{track_id}` | Implemented (M1) | Unified track: credits, album, genres (with source and level), audio features, all external ids, and the licences of contributing sources. |
+| `GET /api/v1/artists/{artist_id}` | Implemented (M1) | Artist with genres, external ids and track count. |
+| All other endpoints above  | Planned     | Delivered in later milestones (see ROADMAP.md).                                                           |
 
 When the backend is running, the interactive documentation is at <http://localhost:8000/docs> and the
 OpenAPI schema is at <http://localhost:8000/api/v1/openapi.json>.

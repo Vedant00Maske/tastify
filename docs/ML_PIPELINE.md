@@ -230,3 +230,31 @@ Initial event weights can be configurable:
 Do not treat every skip as a dislike. Users may skip for reasons unrelated to musical preference.
 
 Weights must be tuned through experimentation.
+
+---
+
+## Implemented pipeline (Milestone 1)
+
+Code lives in `ml/tastify_ml/`. It is run from `ml/` with the backend virtualenv (see DEVELOPMENT.md).
+Sources and licences are listed in DATA_SOURCES.md.
+
+```bash
+python -m tastify_ml download            # raw files -> ml/data/raw/<source>/ (checksummed, resumable)
+python -m tastify_ml catalogue all       # every stage below, in order
+python -m tastify_ml catalogue <stage>   # a single stage
+```
+
+| Stage | Spec stage | What it does | Output |
+| --- | --- | --- | --- |
+| `listens` | 1 Ingestion, 2 Validation | Streams 14 daily ListenBrainz dumps in parallel. Validates each listen (user, timestamp, artist, title) and drops imports outside the dump window. Pseudonymises users (HMAC). | `processed/listens/*.parquet` |
+| `mapping` | 3 Cleaning, 4 Entity resolution | Computes artist + cleaned-title matching keys (pyarrow, identical to the backend's Python rules). Streams the 7.7 GB canonical CSV, keeping only keys that occur in the listens. Maps listens to recording MBIDs, falling back to client-submitted MBIDs. Counts listeners per recording. | `processed/listen_key_mapping.parquet`, `listens_mapped/`, `recording_popularity.parquet` |
+| `genres` | 3 Cleaning | Loads the MusicBrainz genre vocabulary. | `genres` |
+| `catalogue` | 1, 2, 4, 7 Normalized catalogue | Seeds: the most-listened recordings (at least `CATALOGUE_MIN_LISTENERS` distinct listeners), plus the sitewide top 1000. Fetches metadata in batches of 500 (cached in `raw_records`), validates it into `SourceTrack`, and loads it through the catalogue writer (entity resolution, ADR-014). | catalogue tables |
+| `interactions` | 6 Feature input | Joins mapped listens to catalogue tracks and de-duplicates them. | `processed/interactions.parquet` (user_key, track_id, listened_at) |
+| `acousticbrainz` | 5 Feature extraction | Streams the rhythm and low-level feature CSVs, keeping the first submission per catalogue recording. | `track_features` (`acousticbrainz`) |
+| `fma` | 1–5 | FMA genre hierarchy, the 13k tracks with Echonest features (resolved against the catalogue), and their features. | catalogue tables, `track_features` (`fma_echonest`) |
+| `quality` | 2 Validation | Runs the data quality checks and writes the report. Fails if an error-severity check fails. | `docs/reports/data-quality.md`, `ml/data/reports/*.json` |
+
+Every stage records an `ingestion_jobs` row (parameters, statistics, status) and sampled
+`ingestion_errors`. Re-running a stage is idempotent: existing outputs, cached API payloads and known
+provider identifiers are reused. Use `--force` to reprocess.

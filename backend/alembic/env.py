@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import get_settings
 from app.core.database import Base
+from app.domains.catalogue import models as _catalogue_models  # noqa: F401
 
 # Import every domain's models module here as it is added, so autogenerate can see its tables.
 

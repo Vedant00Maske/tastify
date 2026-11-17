@@ -10,9 +10,9 @@ This plan supersedes the milestone numbering of the original §16 below, which i
 | Milestone | Scope | Status |
 | --- | --- | --- |
 | 0 – Engineering Foundation | Repository, tooling, CI, Docker, migrations, documentation | Done |
-| 1 – Music Data Foundation | Data source selection, catalogue ingestion, cleaning, normalization, entity resolution, database design | Done (pending review) |
-| 2 – Recommendation Engine V1 | Popularity baseline, content-based recommendations, similarity search, offline evaluation | Planned |
-| 3 – Personalized Hybrid Recommendation | Taste profiles, collaborative filtering, embeddings, candidate generation, ranking, diversity | Planned |
+| 1 – Music Data Foundation | Data source selection, catalogue ingestion, cleaning, normalization, entity resolution, database design | Done |
+| 2 – Recommendation Engine V1 | Popularity baseline, content-based recommendations, similarity search, offline evaluation | Done |
+| 3 – Personalized Hybrid Recommendation | Taste profiles, collaborative filtering, embeddings, candidate generation, ranking, diversity | Done (pending review) |
 | 4 – Complete User Application | Authentication, onboarding, discovery dashboard, playlists, feedback, personalized categories | Planned |
 | 5 – Music Platform Integrations | ListenBrainz, MusicBrainz, Spotify and YouTube integrations, subject to API permissions | Planned |
 | 6 – Advanced Recommendation Intelligence | Context-aware ranking, cold-start improvements, natural-language playlists, experimentation, optimization | Planned |
@@ -33,6 +33,46 @@ be retrieved without depending on a specific provider.
 - [x] Data quality checks and report (`catalogue quality`, docs/reports/data-quality.md)
 - [x] Provider-independent catalogue API: `/tracks/search`, `/tracks/lookup`, `/tracks/{id}`, `/artists/{id}`
 - [x] Sample catalogue built from real data, with the quality report committed (reports/data-quality.md)
+
+### Milestone 2 deliverables
+
+Acceptance criterion: a user provides a favourite track and receives meaningful similar tracks,
+with measurable evaluation results.
+
+- [x] Popularity baseline: global, by genre, by artist, and trending where reliable (ADR-015)
+- [x] Content-based model: categorical encoding, numerical normalization, genre TF-IDF, cosine
+      similarity, track-to-track and artist similarity
+- [x] Similarity retrieval: exact search, pgvector HNSW, and an exact-vs-approximate benchmark
+- [x] API: `GET /recommendations/similar/{track_id}`, `/artist/{artist_id}`, `/genre/{genre}`,
+      `/popular` (with model versions and evidence-based reasons)
+- [x] Offline evaluation: Precision@K, Recall@K, NDCG@K, MAP@K, coverage, diversity@K and novelty,
+      on time-aware splits with no future leakage
+- [x] Model versioning (`model_versions`, migration `6ec567b027d8`) and the model benchmark report
+      (reports/model-benchmark.md)
+
+### Milestone 3 deliverables
+
+Acceptance criterion: TASTIFY learns an individual user's taste (plays, likes, skips, saves,
+replays) and generates a personalized mix that reflects it while introducing relevant new artists,
+and the hybrid is benchmarked against the Milestone 2 models (reports/hybrid-benchmark.md, ADR-016).
+
+- [x] User data: users, immutable interaction events (idempotent ingestion), declared preferences,
+      derived taste profiles (migration `a28199fd7847`); development-only user API until auth (M4)
+- [x] Taste profiles: long-term and short-term embeddings, genre and artist affinities, cautious
+      negative preferences, exploration preference, declared preferences on top; reproducible,
+      updated on every new interaction, stability measured on historical data
+- [x] Collaborative filtering: user-user and item-item k-NN, implicit ALS (grid) and BPR on sparse,
+      event-weighted, time-decayed matrices; benchmarked against the listening-profile model
+- [x] Six independent candidate sources with isolated failures, a deterministic merger that keeps
+      source attribution, and an eligibility filter
+- [x] Hybrid ranking: calibrated weighted baseline and LightGBM LambdaRank, tuned on chronological
+      validation data; served from the model registry without LightGBM in the API
+- [x] Diversity and exploration: MMR, artist caps, genre and popularity caps, familiar/balanced/
+      explorer modes, category-specific policies (for you, discovery, artist radio)
+- [x] Evaluation: test period plus rolling one-day windows; history-size, genre and popularity
+      segments; cold start; profile stability; a CC0-only variant for licensing
+- [x] Model versioning: `collaborative` and `hybrid` versions with artifacts and lineage; the
+      Milestone 2 models kept active and snapshotted as the baseline
 
 ## 16. Development Roadmap
 

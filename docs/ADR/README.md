@@ -21,3 +21,5 @@ marked _Superseded_ and linked to the ADR that replaces it.
 | [ADR-012](ADR-012-ml-package-reuses-backend-data-layer.md)    | The ML package reuses the backend's data layer     | Accepted |
 | [ADR-013](ADR-013-data-sources-and-licensing-posture.md)      | Initial data sources and licensing posture         | Accepted |
 | [ADR-014](ADR-014-entity-resolution-policy.md)                | Conservative, explainable entity resolution        | Accepted |
+| [ADR-015](ADR-015-recommendation-engine-v1.md)                | Recommendation engine V1: popularity and content embeddings in pgvector | Accepted |
+| [ADR-016](ADR-016-personalized-hybrid-recommendation.md)    | Personalized hybrid recommendation: profiles, collaborative filtering, LambdaRank, diversity | Accepted |

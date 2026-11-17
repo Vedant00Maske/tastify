@@ -7,11 +7,14 @@ from tests.integration.migration_runner import run_alembic
 pytestmark = pytest.mark.integration
 
 
-def test_migrations_apply_and_roll_back_from_a_clean_database() -> None:
+async def test_migrations_apply_and_roll_back_from_a_clean_database() -> None:
     run_alembic("downgrade", "base")
     run_alembic("upgrade", "head")
     run_alembic("downgrade", "base")
     run_alembic("upgrade", "head")
+    # The round trip recreates the vector extension, so its type gets a new OID; pooled
+    # connections cached the old one. Later tests must start from fresh connections.
+    await engine.dispose()
 
 
 @pytest.mark.usefixtures("migrated_database")

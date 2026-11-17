@@ -5,6 +5,9 @@ asyncpg==0.32.0
 celery[redis]==5.7.0
 fastapi==0.163.1
 httpx==0.28.1
+# Personalized serving: ALS fold-in, tree-ensemble ranking and MMR (Milestone 3).
+numpy==2.4.6
+pgvector==0.5.1
 pydantic==2.14.3
 pydantic-settings==2.16.3
 redis==8.1.0

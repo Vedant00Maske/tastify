@@ -258,3 +258,74 @@ python -m tastify_ml catalogue <stage>   # a single stage
 Every stage records an `ingestion_jobs` row (parameters, statistics, status) and sampled
 `ingestion_errors`. Re-running a stage is idempotent: existing outputs, cached API payloads and known
 provider identifiers are reused. Use `--force` to reprocess.
+
+## Implemented recommendation pipeline (Milestone 2)
+
+Design: ADR-015. Results: [reports/model-benchmark.md](reports/model-benchmark.md).
+
+```bash
+python -m tastify_ml recommend all         # evaluate -> publish -> benchmark -> report
+python -m tastify_ml recommend <stage>     # a single stage (--skip-fma to skip the FMA experiment)
+```
+
+| Stage | What it does | Output |
+| --- | --- | --- |
+| `evaluate` | Time-aware offline evaluation. The last 3 complete days are the test period, the 3 days before them the validation period; each is predicted from strictly earlier listens. Tunes content feature weights and the popularity blend on validation, then evaluates every model once on test. Also runs the research-only FMA audio experiment. | `ml/data/models/evaluation.json` |
+| `publish` | Trains the popularity model on the full window and the content model with the selected hyperparameters, then publishes both as new active versions. | `model_versions`, `track_popularity`, `track_embeddings`, `artist_embeddings`; `ml/data/models/<version>/` |
+| `benchmark` | Exact (numpy and pgvector sequential scan) vs HNSW retrieval over the published embeddings: recall@10 and latency at several `ef_search` values. | `ml/data/models/retrieval.json` |
+| `report` | Renders the benchmark report, with live examples from the backend `RecommendationService`. | `docs/reports/model-benchmark.md` |
+
+Models:
+
+| Model | Features | Used by |
+| --- | --- | --- |
+| Popularity | Distinct listeners (log-normalized score), plays; trending = smoothed ratio of recent (3 days) to earlier average daily listeners, only with at least 20 recent listeners and 7 days of earlier history | `/recommendations/popular`, popularity prior of every other strategy |
+| Content | Genre tags weighted by their smoothed vote share, votes / (total votes + 2), and by level (recording 1.0, album 0.8, artist 0.6), then TF-IDF; one-hot decade, album type, artist area and type; standardized log duration and per-source audio features. Blocks are weighted, concatenated, reduced to 128 dimensions with truncated SVD and L2-normalized | `/recommendations/similar`, `/recommendations/artist` (artist embeddings) |
+
+Ranking rules (candidate pool, popularity blend, artist cap, one version per song, tag smoothing) live in
+`backend/app/domains/recommendations/ranking.py` and are called by both the API and the evaluation
+(`tastify_ml/evaluation/recommenders.py`), so offline metrics describe the served ranking.
+
+## Implemented personalization pipeline (Milestone 3)
+
+Design: ADR-016. Results: [reports/hybrid-benchmark.md](reports/hybrid-benchmark.md).
+
+```bash
+python -m tastify_ml personalize all       # baseline -> evaluate -> publish -> benchmark -> report
+python -m tastify_ml personalize <stage>
+```
+
+| Stage | What it does | Output |
+| --- | --- | --- |
+| `baseline` | Snapshots the Milestone 2 artifacts, configurations, results and report with SHA-256 checksums. Idempotent; the Milestone 2 versions stay active. | `ml/data/models/baselines/m2/` |
+| `evaluate` | The hybrid experiment: CF benchmark, candidate generation, weighted and LambdaRank rankers, diversity and exploration sweeps on validation; then the test period once, rolling one-day windows, cold start, profile stability and reproducibility checks. | `ml/data/models/hybrid/evaluation.json`, `rankers.json` |
+| `publish` | Trains ALS and item-item on the full window with the selected configuration and publishes the `collaborative` and `hybrid` versions, with lineage. | `model_versions`, `track_cf_factors`, `track_neighbours`, `model_artifacts`; `ml/data/models/<version>/` |
+| `benchmark` | Exact vs HNSW (inner product) retrieval of collaborative factors. | `ml/data/models/hybrid/retrieval.json` |
+| `report` | The benchmark report, with live examples through the API services (in a rolled-back transaction). | `docs/reports/hybrid-benchmark.md` |
+
+Architecture (the API and the evaluation run the same functions from `backend/app/domains/`):
+
+```text
+interaction events ─► aggregate_events (users/events.py): per-track positive, recent, negative,
+   │                  like/save/dislike states, early skips, with time decay
+   ▼
+taste profile (users/profile.py): long- and short-term embeddings, genre and artist affinities,
+   │   negative artists, seeds, exploration preference, declared preferences on top
+   ▼
+candidate generation (recommendations/candidate_generation/), each source isolated:
+   collaborative_item · collaborative_mf (ALS fold-in) · listening_profile · content_based
+   · exploration (similar unknown artists) · popularity (user's genres, then overall)
+   ▼
+merge (attribution kept, deterministic) ─► filter (heard, disliked, excluded artists, other
+   │   versions of heard songs)
+   ▼
+features (features.py, with provenance) ─► ranker (hybrid_ranking.py: LambdaRank trees or the
+   │   calibrated weighted hybrid) ─► negative-artist demotion
+   ▼
+composition (diversity.py): MMR, artist cap, familiar/discovery balance, category policies
+```
+
+Offline-only parts: retrieval is exact numpy search (the API uses pgvector HNSW), the models are
+retrained per evaluation period, and research users' signals come from Parquet. Training uses
+`implicit` (ALS, BPR, item-item) and LightGBM (LambdaRank); serving needs neither: fold-in and tree
+evaluation are numpy code in the backend, checked against both libraries in tests.

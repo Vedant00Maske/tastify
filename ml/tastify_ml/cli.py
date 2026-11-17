@@ -81,6 +81,40 @@ async def _run_catalogue(args: argparse.Namespace) -> None:
             raise SystemExit(1)
 
 
+async def _run_recommend(args: argparse.Namespace) -> None:
+    from tastify_ml.pipelines import recommendation
+
+    stages = recommendation.STAGES if args.stage == "all" else (args.stage,)
+    for stage in stages:
+        logger.info("=== recommend stage: %s ===", stage)
+        if stage == "evaluate":
+            await recommendation.stage_evaluate(fma=not args.skip_fma)
+        elif stage == "publish":
+            await recommendation.stage_publish()
+        elif stage == "benchmark":
+            await recommendation.stage_benchmark()
+        elif stage == "report":
+            await recommendation.stage_report()
+
+
+async def _run_personalize(args: argparse.Namespace) -> None:
+    from tastify_ml.pipelines import personalization
+
+    stages = personalization.STAGES if args.stage == "all" else (args.stage,)
+    for stage in stages:
+        logger.info("=== personalize stage: %s ===", stage)
+        if stage == "baseline":
+            await personalization.stage_baseline()
+        elif stage == "evaluate":
+            await personalization.stage_evaluate()
+        elif stage == "publish":
+            await personalization.stage_publish()
+        elif stage == "benchmark":
+            await personalization.stage_benchmark()
+        elif stage == "report":
+            await personalization.stage_report()
+
+
 def run_async(
     func: Callable[[argparse.Namespace], Coroutine[Any, Any, None]],
 ) -> Callable[[argparse.Namespace], None]:
@@ -114,6 +148,28 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--size", type=int, help="catalogue size (default CATALOGUE_SIZE)")
     p.add_argument("--limit", type=int, help="only the first N FMA tracks (smoke runs)")
     p.set_defaults(func=run_async(_run_catalogue))
+
+    p = commands.add_parser(
+        "recommend", help="evaluate, publish and benchmark recommendation models (Milestone 2)"
+    )
+    p.add_argument(
+        "stage",
+        choices=("all", "evaluate", "publish", "benchmark", "report"),
+        help="stage to run, or 'all' in order",
+    )
+    p.add_argument("--skip-fma", action="store_true", help="skip the research-only FMA experiment")
+    p.set_defaults(func=run_async(_run_recommend))
+
+    from tastify_ml.pipelines.personalization import STAGES as PERSONALIZE_STAGES
+
+    p = commands.add_parser(
+        "personalize",
+        help="hybrid personalization: evaluate, publish and report (Milestone 3)",
+    )
+    p.add_argument(
+        "stage", choices=("all", *PERSONALIZE_STAGES), help="stage to run, or 'all' in order"
+    )
+    p.set_defaults(func=run_async(_run_personalize))
 
     return parser
 

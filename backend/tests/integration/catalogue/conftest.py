@@ -11,7 +11,7 @@ from app.domains.catalogue.provenance import ensure_data_source
 CATALOGUE_TABLES = (
     "track_features, track_genres, artist_genres, entity_match_candidates, track_external_ids, "
     "track_artists, tracks, album_external_ids, albums, artist_external_ids, artists, genres, "
-    "raw_records, ingestion_errors, ingestion_jobs, data_sources"
+    "raw_records, ingestion_errors, ingestion_jobs, data_sources, model_versions, users"
 )
 
 

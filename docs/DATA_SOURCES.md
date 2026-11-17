@@ -54,6 +54,36 @@ Known limitations:
 - Search over "artist title" takes about 0.3 s at this size, because the concatenated expression is
   not indexed. Revisit with a dedicated search column or index before the catalogue grows.
 
+## Use in recommendation models (Milestone 2)
+
+The served models (ADR-015) are trained only on sources whose `usage_restriction` is not
+`research_only`: MusicBrainz tracks with their genres and AcousticBrainz features, and ListenBrainz
+popularity. FMA is used only in a separate offline experiment (audio features vs FMA's genre
+labels), reported in [reports/model-benchmark.md](reports/model-benchmark.md). Because MusicBrainz
+genre tags are CC BY-NC-SA and are the content model's main signal, the served content model is
+non-commercial too.
+
+## Use in recommendation models (Milestone 3)
+
+Every published model version records its **lineage** in `model_versions.training_data.lineage`:
+the signals it uses, their source, licence and usage restriction, the upstream model versions, and
+the resulting restriction (`tastify_ml/recommendation/lineage.py`, ADR-016). MusicBrainz is split
+by component, because its core data (recording and artist identities, titles, release metadata) is
+CC0 while tags and genre associations are CC BY-NC-SA.
+
+| Model | Signals | Usage restriction |
+| --- | --- | --- |
+| `popularity` | ListenBrainz listens, canonical listen-to-recording mapping | none |
+| `collaborative` (ALS factors, item-item neighbours) | the above, plus MusicBrainz core data (track identities) | none |
+| `content` | MusicBrainz core data, **MusicBrainz genre tags** | non-commercial |
+| `hybrid` (served ranker) | all of the above, plus TASTIFY users' own interactions | **non-commercial** |
+| `hybrid` CC0 ranker (artifact `ranker_cc0`, not served) | collaborative, popularity, user interactions only | none |
+
+Each ranking feature also records its restriction (`app/domains/recommendations/features.py`), so a
+commercially usable ranker can be retrained without the content signals; the benchmark report
+measures what that costs. FMA stays out of every served model. Research listens are used only to
+train item-level models: no research user's history, profile or factors is published.
+
 ## Provenance in the database
 
 | Table | Provenance it records |

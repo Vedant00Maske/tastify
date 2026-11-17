@@ -34,6 +34,16 @@ class Settings(BaseSettings):
     # MusicBrainz/ListenBrainz/MetaBrainz require a User-Agent identifying the app and a contact.
     metabrainz_user_agent: str = "TASTIFY/0.1.0 ( https://github.com/Vedant00Maske/tastify )"
 
+    # The Milestone 3 user endpoints (/users/{user_id}/...) have no authentication yet (it arrives
+    # in Milestone 4), so they are served only in local and test environments unless this is set.
+    dev_user_api: bool | None = None
+
+    @property
+    def user_api_enabled(self) -> bool:
+        if self.dev_user_api is not None:
+            return self.dev_user_api
+        return self.environment in ("local", "test")
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -2,8 +2,13 @@
 # reuse the backend's data layer (ADR-012). Direct dependencies are pinned exactly.
 -r ../backend/requirements.txt
 
+# Collaborative filtering (ALS, BPR, item-item) and learning to rank (Milestone 3, training only).
+implicit==0.7.3
+lightgbm==4.7.0
 numpy==2.4.6
 pandas==3.1.1
 pyarrow==26.0.1
 scikit-learn==1.9.1
+scipy==1.17.1
+threadpoolctl==3.8.0
 zstandard==0.25.0

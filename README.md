@@ -4,7 +4,7 @@ Personalized music discovery and playlist generation. TASTIFY learns individual 
 listening history, interactions, moods, genres and discovery preferences, and owns its recommendation
 intelligence. Music platforms serve only as metadata, user-data and playlist-export providers.
 
-**Status:** Milestone 1 (music data foundation) complete, pending review. See [docs/ROADMAP.md](docs/ROADMAP.md).
+**Status:** Milestone 3 (personalized hybrid recommendation) complete, pending review. See [docs/ROADMAP.md](docs/ROADMAP.md).
 The approved product and engineering specification is [TASTIFY_v0.1.md](TASTIFY_v0.1.md).
 
 ## Tech stack
@@ -79,6 +79,8 @@ tastify/
 | [ML_PIPELINE](docs/ML_PIPELINE.md)                 | Data pipeline and recommendation engine design           |
 | [DATA_SOURCES](docs/DATA_SOURCES.md)               | Dataset provenance, licences, privacy, entity resolution |
 | [Data quality report](docs/reports/data-quality.md) | Latest catalogue quality report (generated)              |
+| [Model benchmark](docs/reports/model-benchmark.md) | Milestone 2 models: offline evaluation (generated)      |
+| [Hybrid benchmark](docs/reports/hybrid-benchmark.md) | Milestone 3 personalization: offline evaluation (generated) |
 | [INTEGRATIONS](docs/INTEGRATIONS.md)               | Provider abstraction and provider constraints            |
 | [TESTING](docs/TESTING.md)                         | Testing strategy and how to run tests                    |
 | [SECURITY](docs/SECURITY.md)                       | Security and privacy architecture                        |

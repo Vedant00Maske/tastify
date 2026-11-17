@@ -47,6 +47,27 @@ Do not collect precise location or unnecessary device information for recommenda
 
 ---
 
+## User data in Milestone 3 (implemented)
+
+- **No authentication yet.** The `/api/v1/users/{user_id}/…` endpoints (interactions, preferences,
+  taste profile, personalized recommendations) take the user id in the path. They are served only
+  when `ENVIRONMENT` is `local` or `test`, or `DEV_USER_API=true` is set explicitly; in staging and
+  production they return 404. Milestone 4 replaces them with `/users/me/…` behind authentication
+  and ownership checks (§12.3). Do not enable `DEV_USER_API` on a reachable deployment.
+- **Data minimization.** Events hold the track, event type, client and server timestamps, an
+  optional playback position, session id and source; no device or location data.
+- **Account deletion.** Deleting a `users` row cascades to its events, preferences and taste
+  profile. Collaborative models store only item-level data (track factors and neighbours), so no
+  user's factors or history survive in model tables; a user's factors are recomputed per request.
+- **Personalization opt-out** (§12.4): `personalization_enabled = false` makes recommendations
+  ignore the user's profile and history (only already-heard tracks are still left out).
+- **Research data separation.** ListenBrainz research listens (pseudonymous) never enter the
+  application database; only item-level aggregates derived from them are published (DATA_SOURCES.md).
+- **Idempotent ingestion.** `client_event_id` deduplicates retried batches; the batch size is capped
+  at 500 events and event types are validated against an allow-list (database CHECK constraint).
+
+---
+
 ## Repository and supply-chain practices (implemented)
 
 - `.env` is git-ignored. `.env.example` contains only placeholders. Provider credentials are read

@@ -493,8 +493,12 @@ async def stage_fma(limit: int | None = None) -> None:
 # --- reset -----------------------------------------------------------------------------------
 
 # Derived catalogue tables. Raw API payloads, provenance history and the genre vocabulary are kept,
-# so a rebuild after a rule change needs no network access.
+# so a rebuild after a rule change needs no network access. Model serving rows reference tracks, so
+# they are cleared too and every model version is retired (retrain with `recommend all` and
+# `personalize all`). TASTIFY users' events reference tracks, so a reset refuses to run while users
+# exist (their history would point at deleted tracks).
 DERIVED_TABLES = (
+    "track_popularity, track_embeddings, artist_embeddings, track_cf_factors, track_neighbours, "
     "track_features, track_genres, artist_genres, entity_match_candidates, track_external_ids, "
     "track_artists, tracks, album_external_ids, albums, artist_external_ids, artists"
 )
@@ -502,7 +506,16 @@ DERIVED_TABLES = (
 
 async def stage_reset() -> None:
     async with SessionFactory() as session:
+        users = await session.scalar(text("SELECT count(*) FROM users"))
+        if users:
+            raise RuntimeError(
+                f"{users} TASTIFY users exist: resetting the catalogue would orphan their "
+                "interactions and preferences. Delete the users first."
+            )
         await session.execute(text(f"TRUNCATE {DERIVED_TABLES}"))
+        await session.execute(
+            text("UPDATE model_versions SET status = 'retired' WHERE status = 'active'")
+        )
         await session.commit()
     logger.info("Cleared derived catalogue tables (raw records and provenance kept)")
 

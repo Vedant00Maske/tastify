@@ -135,6 +135,27 @@ Tooling set up in Milestone 0:
 - `ml/tests/` covers the pipelines with small synthetic fixtures (tar.zst dumps, CSVs, zip archives
   built in the test), so no downloads are needed. `test_keys.py` checks that the vectorized
   matching keys match the backend's Python rules exactly.
+- Recommendation tests (Milestone 2): metrics are checked against hand-computed values
+  (`test_evaluation_metrics.py`); `test_evaluation_split.py` checks that no interaction crosses the
+  cutoff; `test_recommenders.py` checks that evaluated recommenders rank exactly like the backend's
+  `rerank`; `integration/test_recommendation_publish.py` publishes models to PostgreSQL, serves them
+  through `RecommendationService` and runs the retrieval benchmark. On the backend,
+  `tests/integration/recommendations/` exercises every endpoint on a hand-built model whose
+  expected rankings are computed in the test.
+- Personalization tests (Milestone 3). Parity with the libraries the models come from:
+  `test_collaborative.py` checks that the API's fold-in, BM25 weighting and item-item scoring
+  reproduce `implicit` exactly, and `test_ltr.py` that the backend's numpy tree evaluator reproduces
+  LightGBM's predictions (missing values included) and that training is deterministic.
+  `test_hybrid_engine.py` runs the offline engine on a synthetic world (signals equal the backend's
+  aggregation, candidates are unheard and attributed, generation is deterministic, a failing source
+  is isolated). `integration/test_personalization_publish.py` publishes collaborative and hybrid
+  versions, serves a TASTIFY user through the API service and checks the served collaborative scores
+  against the offline model. On the backend, `tests/unit/users/` covers event aggregation and taste
+  profiles (recent listening does not erase long-term taste, cautious negatives, declared
+  preferences, reproducibility), `tests/unit/recommendations/` the merger, filter, features,
+  rankers, MMR and composition, and `tests/integration/users/` the user API end to end (ingestion
+  and idempotency, preferences, exploration modes, exclusions, cold start, opt-out, a failing
+  source, artist radio, the development-only gate).
 
 - `backend/tests/unit/` is fast, with no network. External dependencies are replaced with fakes
   through `app.dependency_overrides`.

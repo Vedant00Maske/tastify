@@ -192,7 +192,75 @@ Design notes:
 - JSONB is used only for raw payloads, job parameters/statistics and match evidence, which are
   genuinely variable (rule 10).
 - Listening events from ListenBrainz are research data and are **not** stored here (see
-  DATA_SOURCES.md, Privacy). `users` and `user_interactions` arrive with Milestone 4.
+  DATA_SOURCES.md, Privacy). TASTIFY's own `users` and `user_interactions` arrived with
+  Milestone 3 (below).
+
+## Implemented recommendation schema (Milestone 2)
+
+ORM models: `backend/app/domains/recommendations/models.py`. Migration: `6ec567b027d8`. Design:
+ADR-015.
+
+```mermaid
+erDiagram
+    model_versions ||--o{ track_popularity : "publishes"
+    model_versions ||--o{ track_embeddings : "publishes"
+    model_versions ||--o{ artist_embeddings : "publishes"
+    tracks ||--o{ track_popularity : ""
+    tracks ||--o{ track_embeddings : ""
+    artists ||--o{ artist_embeddings : ""
+```
+
+| Table | Purpose and key rules |
+| --- | --- |
+| `model_versions` | Registry of trained models: `model_type` (`popularity`, `content`), unique `version`, `status` (`active`, `retired`), JSONB `params`, `training_data` (window, row counts, input SHA-256s) and offline `metrics`. A partial unique index allows **one active version per type**. |
+| `track_popularity` | Per (version, track): distinct listeners, plays, log-normalized `score` in [0, 1], recent listeners and `trending_score` (NULL when the trend is not reliable). Indexed by (version, score) and (version, trending_score). |
+| `track_embeddings` | Per (version, track): `vector(128)`, L2-normalized. HNSW index (`m=16`, `ef_construction=64`, `vector_cosine_ops`). |
+| `artist_embeddings` | Per (version, artist): `vector(128)` (popularity-weighted mean of the artist's track embeddings) and `track_count`. HNSW index as above. |
+
+Publishing a version (`python -m tastify_ml recommend publish`) inserts its rows, activates it and
+deletes the serving rows of retired versions in one transaction. Retired versions keep their
+registry row, so their parameters and metrics stay auditable, while the vector indexes only hold
+active vectors. Resetting the catalogue (`catalogue reset`) truncates these tables and retires every
+version.
+
+## Implemented user and personalization schema (Milestone 3)
+
+ORM models: `backend/app/domains/users/models.py` and `backend/app/domains/recommendations/models.py`.
+Migration: `a28199fd7847`. Design: ADR-016.
+
+```mermaid
+erDiagram
+    users ||--o| user_preferences : "settings"
+    users ||--o{ user_artist_preferences : "declares"
+    users ||--o{ user_genre_preferences : "declares"
+    users ||--o{ user_interactions : "events"
+    users ||--o| user_taste_profiles : "derived"
+    artists ||--o{ user_artist_preferences : ""
+    genres ||--o{ user_genre_preferences : ""
+    tracks ||--o{ user_interactions : ""
+    model_versions ||--o{ user_taste_profiles : "content model used"
+    model_versions ||--o{ track_cf_factors : "publishes"
+    model_versions ||--o{ track_neighbours : "publishes"
+    model_versions ||--o{ model_artifacts : "stores"
+    tracks ||--o{ track_cf_factors : ""
+    tracks ||--o{ track_neighbours : "track and neighbour"
+```
+
+| Table | Purpose and key rules |
+| --- | --- |
+| `users` | TASTIFY users: id, `status` (`active`, `deleted`), timestamps. Credentials arrive with authentication in Milestone 4. |
+| `user_preferences` | One row per user: `exploration_mode` (`familiar`, `balanced`, `explorer`; NULL = derived from behaviour) and `personalization_enabled` (opt-out, spec §12.4). No row means defaults. |
+| `user_artist_preferences`, `user_genre_preferences` | Declared favourite (`preferred`) or `excluded` artists and genres, one row each, validated by foreign keys. |
+| `user_interactions` | **Immutable** events (rule 7): `event_type` (`play`, `complete`, `replay`, `skip`, `like`, `unlike`, `dislike`, `undislike`, `save`, `unsave`, `playlist_add`), `occurred_at` (client time), `received_at` (server time), `position_ms` (how far playback got, e.g. an early skip), `session_id`, `source`. Unique (`user_id`, `client_event_id`) makes retried batches idempotent. Indexed by (user, occurred_at) and (track, event_type). Tracks referenced by events cannot be deleted (RESTRICT); deleting a user deletes their events (CASCADE). |
+| `user_taste_profiles` | Derived profile (rule 8: aggregated features apart from raw events), rebuilt from events whenever events or preferences change, and lazily when the content model or the profile configuration changes: long- and short-term embeddings (`vector(128)`), genre/artist/negative-artist affinities (JSONB maps of at most 50 entries, always read and written whole), known artists, content seeds, listening statistics, exploration preference, `profile_version` and the content model version used. |
+| `track_cf_factors` | Collaborative (ALS) track factors, `vector(256)`, with the track's BM25 idf; HNSW index on the inner product (`vector_ip_ops`). Users' factors are never stored: they are solved from the user's events at request time. |
+| `track_neighbours` | Item-item collaborative neighbours: (track, neighbour, similarity), up to 100 per track (bounded for storage). Read by track only, through the primary key. |
+| `model_artifacts` | Per-version files (`gram`: the ALS Gram matrix; `ranker`, `ranker_cc0`: LambdaRank tree ensembles as JSON) with media type and SHA-256. Kept for retired versions, so a previous ranker can be inspected or restored. |
+
+`model_versions.model_type` now also allows `collaborative` and `hybrid`. Publishing rules are
+unchanged (one active version per type; serving rows of retired versions are deleted;
+`track_cf_factors` and `track_neighbours` are serving tables). No research user's data or
+factors enter these tables: only item-level aggregates (ADR-016, DATA_SOURCES.md).
 
 ---
 
@@ -230,6 +298,8 @@ linted and formatted with ruff automatically when generated.
 | -------------- | ------------------------------------------------------------------------------------------------------------ |
 | `3f6c2a9d1b0e` | Enable the `vector` extension (pgvector). Needs a superuser, or the extension pre-installed on managed PostgreSQL. |
 | `65ea8b207eac` | Catalogue schema (Milestone 1): provenance, canonical tracks/artists/albums, external ids, genres, features, match review; enables `pg_trgm`. |
+| `6ec567b027d8` | Recommendation models (Milestone 2): model registry, track popularity, track and artist embeddings with HNSW indexes. |
+| `a28199fd7847` | Users and hybrid models (Milestone 3): users, preferences, immutable interactions, taste profiles, collaborative factors (HNSW inner product) and neighbours, model artifacts; `model_type` allows `collaborative` and `hybrid`. Downgrade deletes those versions first. |
 
 ### Databases
 

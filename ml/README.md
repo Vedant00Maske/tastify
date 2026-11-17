@@ -9,6 +9,8 @@ application, and reuse the backend's data layer: schema, entity resolution and p
 pip install -r requirements-dev.txt        # into the backend virtualenv
 python -m tastify_ml download              # raw public datasets -> data/raw (checksummed)
 python -m tastify_ml catalogue all         # Milestone 1 catalogue pipeline
+python -m tastify_ml recommend all         # Milestone 2: evaluate, publish, benchmark, report
+python -m tastify_ml personalize all       # Milestone 3: baseline, evaluate, publish, benchmark, report
 pytest                                     # needs PostgreSQL for tests marked `integration`
 ```
 
@@ -18,6 +20,8 @@ pytest                                     # needs PostgreSQL for tests marked `
 | `tastify_ml/data/ingestion/` | Readers: ListenBrainz dumps and metadata, MusicBrainz canonical dump, AcousticBrainz, FMA |
 | `tastify_ml/data/normalization/` | Vectorized matching keys and listen-to-recording mapping |
 | `tastify_ml/data/quality/` | Data quality checks and reports |
+| `tastify_ml/recommendation/` | Catalogue loading, popularity and content models, publishing, retrieval benchmark; Milestone 3: per-user signals, collaborative models (ALS, item-item, user-user, BPR), LambdaRank training and export, content assets, lineage |
+| `tastify_ml/evaluation/` | Time-aware splits, metrics, evaluated recommenders, experiment, FMA experiment, report; Milestone 3: hybrid engine (profiles, candidates, features), hybrid experiment, segments, hybrid report |
 | `tastify_ml/pipelines/` | Stage orchestration with job/provenance bookkeeping |
 
 | Data folder (git-ignored) | Contents |
@@ -25,6 +29,7 @@ pytest                                     # needs PostgreSQL for tests marked `
 | `data/raw/<source>/` | Source files exactly as published |
 | `data/processed/` | Derived Parquet datasets (pseudonymised listens, mappings, interactions) |
 | `data/reports/` | JSON history of data quality runs |
+| `data/models/` | Evaluation, publish and retrieval results (JSON) and published embeddings per version; `hybrid/` (Milestone 3 results and trained rankers); `baselines/m2/` (checksummed Milestone 2 snapshot) |
 
 Datasets and model binaries are never committed. Their provenance is recorded in the database
 (`data_sources`, `ingestion_jobs`, `raw_records`).

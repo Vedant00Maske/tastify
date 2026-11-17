@@ -29,7 +29,15 @@ mypy_path = "../backend"
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["sklearn.*", "scipy.*", "zstandard.*", "pyarrow.*", "pgvector.*"]
+module = [
+  "sklearn.*",
+  "scipy.*",
+  "zstandard.*",
+  "pyarrow.*",
+  "pgvector.*",
+  "implicit.*",
+  "threadpoolctl.*",
+]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

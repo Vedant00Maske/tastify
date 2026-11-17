@@ -23,3 +23,4 @@ marked _Superseded_ and linked to the ADR that replaces it.
 | [ADR-014](ADR-014-entity-resolution-policy.md)                | Conservative, explainable entity resolution        | Accepted |
 | [ADR-015](ADR-015-recommendation-engine-v1.md)                | Recommendation engine V1: popularity and content embeddings in pgvector | Accepted |
 | [ADR-016](ADR-016-personalized-hybrid-recommendation.md)    | Personalized hybrid recommendation: profiles, collaborative filtering, LambdaRank, diversity | Accepted |
+| [ADR-017](ADR-017-authentication-and-user-application.md)   | Authentication and the user application: server sessions, same-origin proxy, honest playback | Accepted |

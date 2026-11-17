@@ -5,6 +5,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from app.domains.catalogue.schemas import TrackSummary
+
 
 class Strategy(StrEnum):
     SIMILAR_TRACKS = "similar_tracks"
@@ -16,6 +18,11 @@ class Strategy(StrEnum):
     PERSONALIZED = "personalized"
     COLD_START = "cold_start"
     ARTIST_RADIO = "artist_radio"
+    # Milestone 4
+    MOOD = "mood"
+    HIDDEN_GEMS = "hidden_gems"
+    BECAUSE_YOU_LISTENED = "because_you_listened"
+    SURPRISE = "surprise"
 
 
 class PopularKind(StrEnum):
@@ -27,6 +34,11 @@ class RecommendationItem(BaseModel):
     track_id: uuid.UUID
     title: str
     artist: str
+    artist_id: uuid.UUID | None = None
+    album: str | None = None
+    artwork_url: str | None = Field(
+        default=None, description="Album cover (Cover Art Archive); null when unknown."
+    )
     score: float = Field(description="The ranking score the model computed (higher is better).")
     reason: str = Field(description="Why the track was recommended, from recorded evidence.")
 
@@ -81,3 +93,18 @@ class PersonalizedResponse(RecommendationResponse):
     composition: Composition
     candidate_sources: list[SourceStatusOut]
     recommendations: list[PersonalizedItem]  # type: ignore[assignment]
+
+
+# --- Milestone 4 ---------------------------------------------------------------------------------
+
+
+class BecauseYouListened(BaseModel):
+    """Recommendations anchored on one of the user's own tracks."""
+
+    seed: TrackSummary
+    source: str = Field(description="collaborative (co-listened) or content (similar).")
+    recommendations: list[RecommendationItem]
+
+
+class BecauseYouListenedResponse(BaseModel):
+    sections: list[BecauseYouListened]

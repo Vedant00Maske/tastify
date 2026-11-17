@@ -5,7 +5,13 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.catalogue.repository import CatalogueRepository
-from app.domains.catalogue.schemas import ArtistDetail, TrackDetail, TrackSummary
+from app.domains.catalogue.schemas import (
+    ArtistDetail,
+    ArtistSummary,
+    GenreSummary,
+    TrackDetail,
+    TrackSummary,
+)
 
 
 class MusicCatalogService:
@@ -17,6 +23,12 @@ class MusicCatalogService:
 
     async def search_tracks(self, query: str, limit: int = 20) -> list[TrackSummary]:
         return await self.repository.search_tracks(query, limit)
+
+    async def search_artists(self, query: str, limit: int = 20) -> list[ArtistSummary]:
+        return await self.repository.search_artists(query, limit)
+
+    async def top_genres(self, limit: int = 60) -> list[GenreSummary]:
+        return await self.repository.top_genres(limit)
 
     async def get_artist(self, artist_id: uuid.UUID) -> ArtistDetail | None:
         return await self.repository.get_artist(artist_id)

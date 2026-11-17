@@ -165,19 +165,45 @@ request; it is reported here. `strategy` is `personalized`, `cold_start` or `art
 | `GET /api/v1/recommendations/genre/{genre}?limit=` | Implemented (M2) | Tracks whose strongest level-weighted, vote-smoothed tag for the genre is at least 0.25 (a single user vote counts 1/3), ranked by 0.7 x popularity + 0.3 x genre affinity, at most 2 per artist. Genre names are case-insensitive; `-`, `_` and spaces are interchangeable. |
 | `GET /api/v1/recommendations/popular?limit=&kind=all_time\|trending&artist_id=` | Implemented (M2) | Most listened tracks over the popularity window, or only reliably rising trends; optionally one artist's tracks. |
 | `GET /api/v1/recommendations/artist-radio/{artist_id}?limit=` | Implemented (M3) | The artist's most popular tracks (at most 40% of the list) mixed with tracks of the 30 most similar artists (at most 2 each), diversified with MMR. |
-| `POST /api/v1/users` | Implemented (M3, development only) | Create a user. |
-| `GET /api/v1/users/{user_id}` | Implemented (M3, development only) | The user. 404 if unknown. |
-| `POST /api/v1/users/{user_id}/interactions` | Implemented (M3, development only) | Record 1–500 events (`play`, `complete`, `replay`, `skip` with `position_ms`, `like`, `unlike`, `dislike`, `undislike`, `save`, `unsave`, `playlist_add`); `occurred_at` must carry a UTC offset and not be in the future. Idempotent per `client_event_id`. Rebuilds the taste profile and returns it with `recorded` and `duplicates` counts. 422 for unknown tracks. |
-| `GET /api/v1/users/{user_id}/interactions?limit=&before=` | Implemented (M3, development only) | Event history, newest first, paged with `before` / `next_before`. |
-| `GET /api/v1/users/{user_id}/preferences`, `PUT …/preferences` | Implemented (M3, development only) | Declared preferences: `exploration_mode` (`familiar`, `balanced`, `explorer`, or null for automatic), `personalization_enabled`, favourite and excluded artists (ids) and genres (names, case-insensitive). PUT replaces them and rebuilds the profile. 422 for unknown references or an artist/genre both preferred and excluded. |
-| `GET /api/v1/users/{user_id}/taste-profile?include_embeddings=` | Implemented (M3, development only) | Genre and artist affinities, negative artists, listening statistics, exploration preference and discovery target, profile and model versions; optionally the 128-d long- and short-term embeddings. |
-| `GET /api/v1/users/{user_id}/recommendations?limit=&exploration=` | Implemented (M3, development only) | The personalized mix ("for you", spec `GET /recommendations/for-you`): hybrid ranking over six candidate sources, MMR, artist cap 2, familiar/discovery balance from `exploration` (overrides the user's mode for this request). Cold-start users get a popularity or declared-taste mix. |
-| All other endpoints above  | Planned     | Delivered in later milestones (see ROADMAP.md).                                                           |
+| `GET /api/v1/artists/search?q=&limit=` | Implemented (M4) | Fuzzy artist-name search (pg_trgm); each result has area, top genres, track count and an artwork URL. `q` 2–200 chars, `limit` 1–50. |
+| `GET /api/v1/genres?limit=` | Implemented (M4) | The genres with the most tracks (`limit` 1–200, default 60), for browsing. |
+| `POST /api/v1/auth/register` | Implemented (M4) | `{email, password, display_name?, accept_terms}`. Password 10–128 characters, no leading/trailing spaces, not the e-mail. `201` with the user and a session cookie; `409` if the e-mail is taken; `422` for a weak password or unaccepted terms; `429` after 10 registrations per client per hour. |
+| `POST /api/v1/auth/login` | Implemented (M4) | `{email, password}`; `200` with the user and a session cookie, `401` for any wrong combination (same message and timing for unknown e-mails). `429` after 10 attempts per account or 30 per client in 15 minutes (`Retry-After`). |
+| `POST /api/v1/auth/logout` | Implemented (M4) | Revokes the session and clears the cookie (`204`). |
+| `POST /api/v1/auth/password` | Implemented (M4) | `{current_password, new_password}`; `204`. Revokes every other session of the user. |
+| `GET /api/v1/users/me`, `PATCH …` | Implemented (M4) | The signed-in user (`id`, `email`, `display_name`, `created_at`, `onboarding_completed`); PATCH sets `display_name` and/or `onboarding_completed`. |
+| `DELETE /api/v1/users/me` | Implemented (M4) | `{password}`; deletes the account and everything that belongs to it (events, profile, preferences, playlists, sessions). `204`. |
+| `GET /api/v1/users/me/export` | Implemented (M4) | All of the user's data as a JSON attachment: account (without the password hash), preferences, interactions, taste profile, playlists with tracks, sessions (without token hashes). |
+| `GET /api/v1/users/me/preferences`, `PUT …` | Implemented (M4) | Declared preferences: `exploration_mode` (`familiar`, `balanced`, `explorer`, or null for automatic), `personalization_enabled`, favourite and excluded artists (ids) and genres (names), favourite moods (up to 8 mood keys). PUT replaces them and rebuilds the profile. 422 for unknown references or an artist/genre both preferred and excluded. |
+| `GET /api/v1/users/me/taste-profile?include_embeddings=` | Implemented (M4; M3 logic) | Genre and artist affinities (strongest first), negative artists, listening statistics, exploration preference and discovery target, profile and model versions; optionally the 128-d embeddings. |
+| `GET /api/v1/users/me/taste` | Implemented (M4) | Taste analytics for the "Your taste" page: a one-sentence overview, top genres and artists, 12 weekly trend points, emerging and fading genres (last 14 days against before, only with at least 10 plays on each side), 30-day discovery statistics. Anything that cannot be computed reliably is empty or null. |
+| `POST /api/v1/interactions` | Implemented (M4; M3 logic) | Record 1–500 events (`play`, `complete`, `replay`, `skip` with `position_ms`, `like`, `unlike`, `dislike`, `undislike`, `save`, `unsave`, `playlist_add`) for the signed-in user; `occurred_at` must carry a UTC offset and not be in the future. Idempotent per `client_event_id`. Rebuilds the taste profile and returns it with `recorded` and `duplicates`. 422 for unknown tracks. |
+| `GET /api/v1/interactions/history?limit=&before=&event_type=` | Implemented (M4) | Event history with track summaries, newest first, paged with `before` / `next_before`; `event_type` is repeatable. |
+| `GET /api/v1/interactions/state?track_id=` | Implemented (M4) | Current like / dislike / save state of 1–200 tracks (repeat `track_id`). |
+| `GET /api/v1/recommendations/for-you?limit=&exploration=` | Implemented (M4; M3 engine) | The personalized mix: hybrid ranking over six candidate sources, MMR, artist cap 2, familiar/discovery balance from `exploration` (overrides the user's mode for this request). Cold-start users get a popularity or declared-taste mix. |
+| `GET /api/v1/recommendations/hidden-gems?limit=` | Implemented (M4) | The personalized pipeline restricted to tracks below the 55th popularity percentile, with an 80% discovery target and at most one track per artist. |
+| `GET /api/v1/recommendations/surprise` | Implemented (M4) | One track from an artist the user has never played, drawn at random (CSPRNG) from the 10 best explorer-mode discoveries. |
+| `GET /api/v1/recommendations/because-you-listened?seeds=&limit=` | Implemented (M4) | For the user's 1–5 strongest recent tracks: what listeners of that track also play (item-item neighbours), else its content neighbours; unheard tracks only. Empty when personalization is off. |
+| `GET /api/v1/recommendations/moods` | Implemented (M4) | The eight mood mixes (key, title, description, genres). |
+| `GET /api/v1/recommendations/mood/{mood}?limit=&exclude=` | Implemented (M4) | A mood mix: tracks tagged with the mood's genres (affinity ≥ 0.25) whose AcousticBrainz tempo and danceability fit the recipe, ranked by genre fit, popularity and (signed in) taste similarity; heard tracks are skipped for signed-in users. `exclude` (repeatable, up to 100 ids) gives a fresh mix on regenerate. Public; personalized when signed in. 404 for unknown moods. |
+| `GET /api/v1/playlists`, `POST …` | Implemented (M4) | The user's playlists (summaries with track count, duration and up to four artwork URLs). POST `{name, description?, track_ids?, generator?}`: manual, or generated from `for_you`, `mood`, `hidden_gems`, `genre` or `artist_radio` (5–100 tracks); explicit `track_ids` win over the generator, which is kept for regenerate. At most 200 playlists of 500 tracks. |
+| `GET /api/v1/playlists/{id}`, `PATCH …`, `DELETE …` | Implemented (M4) | Detail with tracks in order; rename / describe; delete. Another user's playlist is a `404`. |
+| `POST /api/v1/playlists/{id}/tracks`, `DELETE …/tracks/{track_id}` | Implemented (M4) | Add tracks (duplicates ignored; recorded as `playlist_add` feedback) or remove one. |
+| `PUT /api/v1/playlists/{id}/tracks/order` | Implemented (M4) | `{track_ids}`: the new order; must be exactly the playlist's tracks. |
+| `POST /api/v1/playlists/{id}/regenerate` | Implemented (M4) | Generated playlists only: replace the tracks with a fresh set from the same generator, leaving out the current ones. |
+| `GET /api/v1/playlists/{id}/suggestions?limit=` | Implemented (M4) | Tracks that fit the playlist: nearest neighbours of its mean content embedding, re-ranked with popularity. |
+| All other endpoints above  | Planned     | `/recommendations/custom`, playlist export and integrations: later milestones (see ROADMAP.md). |
 
-**Development-only user API.** Milestone 4 adds authentication. Until then, the `/users/{user_id}/…`
-routes take the user id in the path and are served only when `ENVIRONMENT` is `local` or `test`
-(or `DEV_USER_API=true`); elsewhere they return `404`. Milestone 4 replaces them with
-`/users/me/…` and `/recommendations/for-you` behind authentication and ownership checks (spec §12.3).
+**Authentication.** Every `/users/me/…`, `/interactions…`, `/playlists…` and personalized
+recommendation route requires a session (`401` otherwise); catalogue, mood and non-personal
+recommendation routes are public. Sessions are opaque tokens in an `HttpOnly`, `SameSite=Lax`
+cookie (`tastify_session`, `Secure` outside local development), stored only as SHA-256 hashes,
+valid for 30 days and extended while in use. State-changing requests whose `Origin` is not an
+allowed origin are rejected with `403` (CSRF defence). Details:
+[ADR-017](ADR/ADR-017-authentication-and-user-application.md).
+
+The browser never calls the API across origins: the Next.js server proxies `/api/v1/*` to the
+backend (`frontend/src/proxy.ts`, `API_PROXY_TARGET`), so the session cookie is first-party.
 
 When the backend is running, the interactive documentation is at <http://localhost:8000/docs> and the
 OpenAPI schema is at <http://localhost:8000/api/v1/openapi.json>.

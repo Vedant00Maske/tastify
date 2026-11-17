@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.database import engine
 from app.core.logging import configure_logging
 from app.core.redis import redis_client
+from app.domains.auth.dependencies import OriginCheckMiddleware
 
 
 @asynccontextmanager
@@ -31,6 +32,9 @@ def create_app() -> FastAPI:
         openapi_url=f"{settings.api_v1_prefix}/openapi.json",
         lifespan=lifespan,
     )
+    # Starlette runs the last-added middleware first: CORS answers preflights, then the Origin
+    # check guards state-changing requests (CSRF, ADR-017).
+    app.add_middleware(OriginCheckMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

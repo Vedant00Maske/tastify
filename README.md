@@ -4,14 +4,14 @@ Personalized music discovery and playlist generation. TASTIFY learns individual 
 listening history, interactions, moods, genres and discovery preferences, and owns its recommendation
 intelligence. Music platforms serve only as metadata, user-data and playlist-export providers.
 
-**Status:** Milestone 3 (personalized hybrid recommendation) complete, pending review. See [docs/ROADMAP.md](docs/ROADMAP.md).
+**Status:** Milestone 4 (complete user application: accounts, onboarding, dashboard, discovery, moods, playlists, taste analytics) complete, pending review. See [docs/ROADMAP.md](docs/ROADMAP.md).
 The approved product and engineering specification is [TASTIFY_v0.1.md](TASTIFY_v0.1.md).
 
 ## Tech stack
 
 | Layer           | Technology                                                            |
 | --------------- | --------------------------------------------------------------------- |
-| Frontend        | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4        |
+| Frontend        | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, TanStack Query, Zustand, React Hook Form + Zod, Radix UI, Motion, Recharts |
 | Backend         | FastAPI, Pydantic v2, SQLAlchemy 2 (async), Alembic                   |
 | Data            | PostgreSQL 17 + pgvector, Redis 7                                     |
 | Background jobs | Celery (Redis broker)                                                 |
@@ -48,7 +48,7 @@ python -m tastify_ml catalogue all     # writes docs/reports/data-quality.md
 
 ```text
 tastify/
-├── frontend/              Next.js app: src/{app,components,features,hooks,services,types}, e2e/
+├── frontend/              Next.js app: src/{app,components,features,hooks,lib,services,stores,types}, e2e/
 ├── backend/               FastAPI app, Celery worker, Alembic migrations, tests
 │   ├── app/
 │   │   ├── api/           routing and request validation (/api/v1)

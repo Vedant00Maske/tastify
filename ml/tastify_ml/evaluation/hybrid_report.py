@@ -16,10 +16,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
+from app.domains.auth.schemas import RegisterIn
+from app.domains.auth.service import AuthService
 from app.domains.catalogue.models import Artist, Track
 from app.domains.recommendations.models import TrackPopularity
 from app.domains.recommendations.personalized import PersonalizedRecommendationService
 from app.domains.recommendations.repository import RecommendationRepository
+from app.domains.users.models import User
 from app.domains.users.profile import ExplorationMode
 from app.domains.users.schemas import InteractionBatch, InteractionIn, PreferencesIn
 from app.domains.users.service import UserService
@@ -39,6 +42,19 @@ BEYOND = ("coverage@10", "diversity@10", "artist_diversity@10", "novelty@10")
 
 
 # --- live examples ---------------------------------------------------------------------------
+
+
+async def demo_user(session: AsyncSession) -> User:
+    """A throwaway account (callers roll the transaction back)."""
+    user, _ = await AuthService(session).register(
+        RegisterIn(
+            email=f"demo-{uuid.uuid4().hex[:12]}@example.invalid",
+            password=f"demo-{uuid.uuid4().hex}",
+            accept_terms=True,
+        ),
+        "tastify-ml",
+    )
+    return user
 
 
 async def _top_tracks(session: AsyncSession, artist: str, count: int) -> list[uuid.UUID]:
@@ -72,7 +88,7 @@ def _items(response: Any) -> list[dict[str, Any]]:
 
 async def _persona(session: AsyncSession) -> dict[str, Any]:
     users = UserService(session)
-    user = await users.create()
+    user = await demo_user(session)
     now = datetime.now(UTC)
     events: list[InteractionIn] = []
     for artist, (count, plays, (recent, oldest)) in PERSONA.items():
@@ -132,9 +148,9 @@ async def _persona(session: AsyncSession) -> dict[str, Any]:
 async def _cold_start(session: AsyncSession) -> dict[str, Any]:
     users = UserService(session)
     service = PersonalizedRecommendationService(session)
-    newcomer = await users.create()
+    newcomer = await demo_user(session)
     plain = await service.for_you(newcomer.id, 8)
-    declared = await users.create()
+    declared = await demo_user(session)
     artist = await session.scalar(
         select(Artist.id).where(func.lower(Artist.name) == "cigarettes after sex")
     )

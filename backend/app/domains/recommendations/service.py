@@ -121,6 +121,9 @@ class RecommendationService:
                 track_id=r.item,
                 title=summaries[r.item].title,
                 artist=summaries[r.item].artist,
+                artist_id=summaries[r.item].artist_id,
+                album=summaries[r.item].album_title,
+                artwork_url=summaries[r.item].artwork_url,
                 score=round(r.score, 4),
                 reason=reasons[r.item],
             )

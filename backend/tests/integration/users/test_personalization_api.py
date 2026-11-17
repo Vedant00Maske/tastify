@@ -20,7 +20,6 @@ from httpx import AsyncClient
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
 from app.domains.catalogue.models import Artist, ArtistGenre, Genre, Track, TrackArtist, TrackGenre
 from app.domains.recommendations.models import (
     CF_DIMENSIONS,
@@ -263,8 +262,16 @@ async def world(session: AsyncSession) -> World:
 
 
 async def create_user(client: AsyncClient) -> str:
-    response = await client.post("/api/v1/users")
-    assert response.status_code == 201
+    """Register a fresh account; the client's session cookie now belongs to it."""
+    response = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"listener-{uuid.uuid4().hex[:12]}@example.com",
+            "password": "correct horse battery",
+            "accept_terms": True,
+        },
+    )
+    assert response.status_code == 201, response.text
     return str(response.json()["id"])
 
 
@@ -283,13 +290,13 @@ async def rock_fan(client: AsyncClient, world: World) -> str:
         *plays(world, ["Do I Wanna Know"], 3),
         {"track_id": str(world.tracks["Creep"]), "event_type": "like"},
     ]
-    response = await client.post(f"/api/v1/users/{user}/interactions", json={"events": events})
+    response = await client.post("/api/v1/interactions", json={"events": events})
     assert response.status_code == 201, response.text
     return user
 
 
 async def recommendations(client: AsyncClient, user: str, **params: Any) -> dict[str, Any]:
-    response = await client.get(f"/api/v1/users/{user}/recommendations", params=params)
+    response = await client.get("/api/v1/recommendations/for-you", params=params)
     assert response.status_code == 200, response.text
     body: dict[str, Any] = response.json()
     return body
@@ -298,20 +305,22 @@ async def recommendations(client: AsyncClient, user: str, **params: Any) -> dict
 # --- users and interactions ------------------------------------------------------------------
 
 
-async def test_create_and_get_user(client: AsyncClient, world: World) -> None:
+async def test_signed_in_user_and_signed_out_requests(client: AsyncClient, world: World) -> None:
     user = await create_user(client)
-    response = await client.get(f"/api/v1/users/{user}")
+    response = await client.get("/api/v1/users/me")
     assert response.status_code == 200
-    assert response.json()["status"] == "active"
-    assert (await client.get(f"/api/v1/users/{uuid.uuid4()}")).status_code == 404
+    assert response.json()["id"] == user
+    await client.post("/api/v1/auth/logout")
+    for path in ("/users/me", "/recommendations/for-you", "/interactions/history"):
+        assert (await client.get(f"/api/v1{path}")).status_code == 401
 
 
 async def test_interactions_build_and_update_the_taste_profile(
     client: AsyncClient, world: World
 ) -> None:
-    user = await create_user(client)
+    await create_user(client)
     events = list(plays(world, ["Creep", "Karma Police", "Do I Wanna Know"]))
-    response = await client.post(f"/api/v1/users/{user}/interactions", json={"events": events})
+    response = await client.post("/api/v1/interactions", json={"events": events})
     body = response.json()
     assert response.status_code == 201
     assert body["recorded"] == 9
@@ -324,13 +333,13 @@ async def test_interactions_build_and_update_the_taste_profile(
 
     # New interactions update the profile immediately.
     more = list(plays(world, ["Drop", "Bass"], 6))
-    body = (await client.post(f"/api/v1/users/{user}/interactions", json={"events": more})).json()
+    body = (await client.post("/api/v1/interactions", json={"events": more})).json()
     assert body["profile"]["history_size"] == 5
     assert "DJ" in [a["name"] for a in body["profile"]["artist_affinity"]]
 
 
 async def test_retried_events_are_recorded_once(client: AsyncClient, world: World) -> None:
-    user = await create_user(client)
+    await create_user(client)
     track = str(world.tracks["Creep"])
     batch = {
         "events": [
@@ -339,16 +348,16 @@ async def test_retried_events_are_recorded_once(client: AsyncClient, world: Worl
             {"track_id": track, "event_type": "play", "client_event_id": "e-2"},
         ]
     }
-    first = (await client.post(f"/api/v1/users/{user}/interactions", json=batch)).json()
-    second = (await client.post(f"/api/v1/users/{user}/interactions", json=batch)).json()
+    first = (await client.post("/api/v1/interactions", json=batch)).json()
+    second = (await client.post("/api/v1/interactions", json=batch)).json()
     assert (first["recorded"], first["duplicates"]) == (2, 1)
     assert (second["recorded"], second["duplicates"]) == (0, 3)
     assert second["profile"]["interaction_count"] == 2
 
 
 async def test_invalid_interactions_are_rejected(client: AsyncClient, world: World) -> None:
-    user = await create_user(client)
-    url = f"/api/v1/users/{user}/interactions"
+    await create_user(client)
+    url = "/api/v1/interactions"
     unknown = await client.post(
         url, json={"events": [{"track_id": str(uuid.uuid4()), "event_type": "play"}]}
     )
@@ -375,7 +384,7 @@ async def test_invalid_interactions_are_rejected(client: AsyncClient, world: Wor
 
 
 async def test_interaction_history_pages_backwards(client: AsyncClient, world: World) -> None:
-    user = await create_user(client)
+    await create_user(client)
     start = datetime.now(UTC) - timedelta(hours=10)
     events = [
         {
@@ -385,13 +394,13 @@ async def test_interaction_history_pages_backwards(client: AsyncClient, world: W
         }
         for i in range(5)
     ]
-    await client.post(f"/api/v1/users/{user}/interactions", json={"events": events})
-    page = (await client.get(f"/api/v1/users/{user}/interactions", params={"limit": 3})).json()
+    await client.post("/api/v1/interactions", json={"events": events})
+    page = (await client.get("/api/v1/interactions/history", params={"limit": 3})).json()
     assert len(page["items"]) == 3
     assert page["next_before"] is not None
     rest = (
         await client.get(
-            f"/api/v1/users/{user}/interactions",
+            "/api/v1/interactions/history",
             params={"limit": 3, "before": page["next_before"]},
         )
     ).json()
@@ -403,8 +412,8 @@ async def test_interaction_history_pages_backwards(client: AsyncClient, world: W
 
 
 async def test_preferences_round_trip_and_validation(client: AsyncClient, world: World) -> None:
-    user = await create_user(client)
-    url = f"/api/v1/users/{user}/preferences"
+    await create_user(client)
+    url = "/api/v1/users/me/preferences"
     default = (await client.get(url)).json()
     assert default["exploration_mode"] is None
     assert default["personalization_enabled"] is True
@@ -424,7 +433,7 @@ async def test_preferences_round_trip_and_validation(client: AsyncClient, world:
     assert body["preferred_genres"] == ["electronic"]
     assert body["excluded_genres"] == ["pop"]
 
-    profile = (await client.get(f"/api/v1/users/{user}/taste-profile")).json()
+    profile = (await client.get("/api/v1/users/me/taste-profile")).json()
     assert profile["artist_affinity"][0]["name"] == "DJ"
     assert profile["discovery_target"] == 0.8
     assert profile["genre_affinity"][0]["genre"] == "electronic"
@@ -444,16 +453,14 @@ async def test_preferences_round_trip_and_validation(client: AsyncClient, world:
 
 
 async def test_taste_profile_can_include_embeddings(client: AsyncClient, world: World) -> None:
-    user = await rock_fan(client, world)
+    await rock_fan(client, world)
     body = (
-        await client.get(
-            f"/api/v1/users/{user}/taste-profile", params={"include_embeddings": "true"}
-        )
+        await client.get("/api/v1/users/me/taste-profile", params={"include_embeddings": "true"})
     ).json()
     assert len(body["long_term_embedding"]) == EMBEDDING_DIMENSIONS
     assert body["content_model_version"] == "content-test"
     assert body["listening_frequency"]["liked"] == 1.0
-    plain = (await client.get(f"/api/v1/users/{user}/taste-profile")).json()
+    plain = (await client.get("/api/v1/users/me/taste-profile")).json()
     assert plain["long_term_embedding"] is None
 
 
@@ -514,12 +521,12 @@ async def test_dislikes_exclusions_and_skips_shape_the_list(
             for t in ("Hit One", "Hit Two", "Hit One")
         ),
     ]
-    await client.post(f"/api/v1/users/{user}/interactions", json={"events": events})
+    await client.post("/api/v1/interactions", json={"events": events})
     await client.put(
-        f"/api/v1/users/{user}/preferences",
+        "/api/v1/users/me/preferences",
         json={"excluded_artists": [str(world.artists["Cigs"])]},
     )
-    profile = (await client.get(f"/api/v1/users/{user}/taste-profile")).json()
+    profile = (await client.get("/api/v1/users/me/taste-profile")).json()
     assert [a["name"] for a in profile["negative_artists"]] == ["Popstar"]
     body = await recommendations(client, user, limit=20)
     titles = {r["title"] for r in body["recommendations"]}
@@ -538,7 +545,7 @@ async def test_cold_start_users_get_recommendations(client: AsyncClient, world: 
 
     declared = await create_user(client)
     await client.put(
-        f"/api/v1/users/{declared}/preferences",
+        "/api/v1/users/me/preferences",
         json={"preferred_artists": [str(world.artists["DJ"])], "preferred_genres": ["electronic"]},
     )
     body = await recommendations(client, declared, limit=3)
@@ -550,7 +557,7 @@ async def test_personalization_opt_out_ignores_personal_data(
     client: AsyncClient, world: World
 ) -> None:
     user = await rock_fan(client, world)
-    await client.put(f"/api/v1/users/{user}/preferences", json={"personalization_enabled": False})
+    await client.put("/api/v1/users/me/preferences", json={"personalization_enabled": False})
     body = await recommendations(client, user, limit=5)
     assert body["composition"]["exploration_mode"] == "off"
     assert all(not r["discovery"] for r in body["recommendations"])
@@ -612,13 +619,6 @@ async def test_lambdarank_ranker_is_served_from_its_artifact(
     body = await recommendations(client, user, limit=4)
     assert body["ranker"] == "lambdarank"
     assert len(body["recommendations"]) == 4
-
-
-async def test_user_api_is_disabled_outside_development(
-    client: AsyncClient, world: World, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(get_settings(), "dev_user_api", False)
-    assert (await client.post("/api/v1/users")).status_code == 404
 
 
 # --- artist radio ----------------------------------------------------------------------------

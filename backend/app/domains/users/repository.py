@@ -50,13 +50,6 @@ class UserRepository:
 
     # --- users -------------------------------------------------------------------------------
 
-    async def create_user(self) -> User:
-        user = User()
-        self.session.add(user)
-        await self.session.flush()
-        await self.session.refresh(user)
-        return user
-
     async def get_user(self, user_id: uuid.UUID) -> User | None:
         user = await self.session.get(User, user_id)
         return user if user is not None and user.status == "active" else None
@@ -123,9 +116,15 @@ class UserRepository:
         )
 
     async def history(
-        self, user_id: uuid.UUID, limit: int, before: datetime | None
+        self,
+        user_id: uuid.UUID,
+        limit: int,
+        before: datetime | None,
+        event_types: Sequence[str] = (),
     ) -> list[UserInteraction]:
         statement = select(UserInteraction).where(UserInteraction.user_id == user_id)
+        if event_types:
+            statement = statement.where(UserInteraction.event_type.in_(list(event_types)))
         if before is not None:
             statement = statement.where(UserInteraction.occurred_at < before)
         rows = await self.session.scalars(
@@ -163,6 +162,7 @@ class UserRepository:
         *,
         exploration_mode: str | None,
         personalization_enabled: bool,
+        preferred_moods: Sequence[str],
         artists: Sequence[tuple[uuid.UUID, str]],
         genres: Sequence[tuple[uuid.UUID, str]],
     ) -> None:
@@ -172,12 +172,14 @@ class UserRepository:
                 user_id=user_id,
                 exploration_mode=exploration_mode,
                 personalization_enabled=personalization_enabled,
+                preferred_moods=list(preferred_moods),
             )
             .on_conflict_do_update(
                 index_elements=[UserPreference.user_id],
                 set_={
                     "exploration_mode": exploration_mode,
                     "personalization_enabled": personalization_enabled,
+                    "preferred_moods": list(preferred_moods),
                     "updated_at": func.now(),
                 },
             )

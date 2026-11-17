@@ -5,7 +5,7 @@ Provider-specific details appear only as identifiers, so clients never depend on
 
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ExternalIdOut(BaseModel):
@@ -61,6 +61,12 @@ class TrackSummary(BaseModel):
     """Display artist credit, e.g. "Jay-Z feat. Beyoncé"."""
     duration_ms: int | None
     release_year: int | None
+    artist_id: uuid.UUID | None = None
+    album_title: str | None = None
+    artwork_url: str | None = Field(
+        default=None,
+        description="Album cover (Cover Art Archive); null when unknown or disabled.",
+    )
 
 
 class TrackDetail(TrackSummary):
@@ -87,3 +93,28 @@ class ArtistDetail(BaseModel):
 class TrackSearchResponse(BaseModel):
     query: str
     results: list[TrackSummary]
+
+
+class ArtistSummary(BaseModel):
+    id: uuid.UUID
+    name: str
+    area: str | None
+    genres: list[str]
+    track_count: int
+    artwork_url: str | None = Field(
+        default=None, description="Cover of one of the artist's albums, when known."
+    )
+
+
+class ArtistSearchResponse(BaseModel):
+    query: str
+    results: list[ArtistSummary]
+
+
+class GenreSummary(BaseModel):
+    name: str
+    tracks: int
+
+
+class GenreListResponse(BaseModel):
+    genres: list[GenreSummary]

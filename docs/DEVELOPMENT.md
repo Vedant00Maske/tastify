@@ -65,6 +65,13 @@ npm ci
 npm run dev
 ```
 
+The browser only talks to the frontend: `/api/v1/*` is forwarded to the backend by the Next.js
+proxy (`src/proxy.ts`), so the session cookie stays first-party. It targets
+`http://127.0.0.1:8000` by default; set `API_PROXY_TARGET` to point elsewhere (docker compose sets
+`http://backend:8000`). Open the app on an address listed in `CORS_ORIGINS` (by default
+`http://localhost:3000` and `http://127.0.0.1:3000`): state-changing requests from any other
+origin are rejected. Create an account at `/register`; the app walks you through onboarding.
+
 **ML pipelines** (`ml/`, same virtualenv as the backend)
 
 ```bash
@@ -119,3 +126,8 @@ pre-commit run --all-files
   the host side of the mapping in `docker-compose.yml`.
 - **Vitest fails with `ERR_REQUIRE_ESM`.** Your Node.js is older than 22.12. Upgrade to Node 24 LTS.
 - **Hot reload is slow in containers.** Use hybrid mode (2b).
+- **Sign-in works but every change fails with `403 Origin not allowed`.** The address in the
+  browser is not in `CORS_ORIGINS` (for example `127.0.0.1` when only `localhost` is listed). Add
+  it to `.env` and restart the backend.
+- **Vitest reports "failed to find the current suite" on Windows.** Run it from PowerShell or
+  `cmd` instead of Git Bash (drive-letter casing; see TESTING.md).

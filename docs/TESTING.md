@@ -155,7 +155,22 @@ Tooling set up in Milestone 0:
   preferences, reproducibility), `tests/unit/recommendations/` the merger, filter, features,
   rankers, MMR and composition, and `tests/integration/users/` the user API end to end (ingestion
   and idempotency, preferences, exploration modes, exclusions, cold start, opt-out, a failing
-  source, artist radio, the development-only gate).
+  source, artist radio).
+- Application tests (Milestone 4). Backend: `tests/integration/users/test_auth_api.py` covers
+  registration rules, login, logout, the HttpOnly cookie, revocation on password change, rate limits, the
+  Origin check, export and account deletion; `test_collections_api.py` covers moods (regenerate
+  with `exclude`), hidden gems, Surprise Me, because-you-listened, playlists (lifecycle, ownership,
+  reorder, regenerate, suggestions), artist search, genres, artwork and the stored taste profile's
+  ordering; `tests/unit/test_milestone4_logic.py` the password policy, analytics helpers, mood
+  recipes and trusted-proxy parsing. Frontend: `src/services/api-client.test.ts` (requests,
+  errors, response validation), `src/lib/logic.test.ts` (formatting, form schemas, safe redirects,
+  the player queue) and `src/components/components.test.tsx` (feedback buttons record the right
+  events, track cards, the exploration slider's accessible value, empty and error states,
+  recent searches without storage). `frontend/e2e/journeys.spec.ts` runs the critical journeys
+  (sign-in redirect, register and onboarding, dashboard feedback and the player, discovery and
+  moods, playlists, taste, search, logout) against an in-memory API (`e2e/support/mock-api.ts`)
+  that intercepts `/api/v1` in the browser, so they need no backend; a journey fails if the app
+  calls an endpoint the mock does not know.
 
 - `backend/tests/unit/` is fast, with no network. External dependencies are replaced with fakes
   through `app.dependency_overrides`.
@@ -166,6 +181,9 @@ Tooling set up in Milestone 0:
 - Frontend tests sit next to the code they test (`*.test.ts(x)` under `src/`). E2E specs live in
   `frontend/e2e/`.
 - Test names describe behaviour, for example `test_readiness_returns_503_when_dependencies_are_unreachable`.
+- On Windows, run the frontend tests from PowerShell or `cmd`, not Git Bash: Git Bash reports the
+  working directory with a lower-case drive letter (`d:/…`), Node resolves `D:\…`, and Vitest then
+  loads its setup file twice ("failed to find the current suite").
 
 ### In CI (`.github/workflows/ci.yml`)
 

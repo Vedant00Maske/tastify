@@ -109,5 +109,10 @@ running as a non-root user. Both are built in CI on every change but not pushed 
 - Steps 1–7 (branch, PR, lint/format, unit tests, integration tests, security checks, Docker build)
   are automated in GitHub Actions.
 - Steps 8–10 (staging, smoke tests, production approval) are planned for Milestone 6.
-- `NEXT_PUBLIC_API_URL` is inlined into the frontend at build time, so pass it as a build argument
-  for each environment.
+- The frontend serves the API on its own origin: set `API_PROXY_TARGET` (runtime) to the
+  backend's internal URL. `NEXT_PUBLIC_API_URL` (build time) defaults to `/api/v1` and normally
+  stays unset.
+- Backend settings per environment: `CORS_ORIGINS` (the public frontend origin; also the CSRF
+  allow-list), `TRUSTED_PROXIES` (the frontend's address or network, so rate limits see real
+  client addresses) and HTTPS in front of both (session cookies are `Secure` outside local and
+  test).

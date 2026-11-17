@@ -17,6 +17,9 @@ x-backend-common: &backend-common
     REDIS_URL: redis://redis:6379/0
     CELERY_BROKER_URL: redis://redis:6379/1
     CELERY_RESULT_BACKEND: redis://redis:6379/2
+    # The frontend container proxies /api/v1 from the compose network: trust its forwarded
+    # client address (Docker's default private ranges), so rate limits apply per real client.
+    TRUSTED_PROXIES: '["127.0.0.1","::1","172.16.0.0/12","192.168.0.0/16"]'
     # File events do not cross the Windows/macOS -> Docker VM boundary reliably; poll instead.
     WATCHFILES_FORCE_POLLING: "true"
   volumes:
@@ -91,8 +94,9 @@ services:
       context: ./frontend
       target: dev
     environment:
-      # Called from the browser, so it points at the host-published backend port.
-      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      # The browser calls /api/v1 on the frontend's own origin (first-party session cookie);
+      # the Next.js proxy forwards it to the backend service over the compose network.
+      API_PROXY_TARGET: http://backend:8000
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

@@ -69,7 +69,7 @@ def seed_similarity_reason(seed_title: str, similarity: float, plays: int) -> st
 
 
 def familiar_artist_reason(artist: str, affinity: float) -> str:
-    return f"More from {artist}, one of your most played artists (affinity {affinity:.2f})"
+    return f"More from {artist}, one of your top artists (affinity {affinity:.2f})"
 
 
 def co_listened_reason(seed_title: str) -> str:
@@ -96,3 +96,24 @@ def profile_reason(genres: Sequence[str], similarity: float) -> str:
 
 def artist_radio_reason(artist: str, listeners: int) -> str:
     return f"By {artist} ({listeners:,} listeners)"
+
+
+# --- Milestone 4 ---------------------------------------------------------------------------------
+
+
+def mood_reason(mood: str, genre: str, tempo: float | None, taste: float | None) -> str:
+    detail = f"{genre}, {tempo:.0f} BPM" if tempo else genre
+    text = f"Fits {mood}: {detail}"
+    return f"{text}; close to your taste ({taste:.2f})" if taste is not None and taste > 0 else text
+
+
+def hidden_gem_reason(base: str, listeners: int) -> str:
+    return f"{base}. A hidden gem: {listeners:,} listeners in the last 14 days"
+
+
+def surprise_reason(base: str) -> str:
+    return f"Something new for you. {base}"
+
+
+def playlist_fit_reason(playlist: str, similarity: float) -> str:
+    return f"Fits the sound of {_OPEN}{playlist}{_CLOSE} (similarity {similarity:.2f})"

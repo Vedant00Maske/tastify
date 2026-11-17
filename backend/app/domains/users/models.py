@@ -10,7 +10,8 @@
   in size (at most 50 entries), and rebuilt from events whenever the events or models change.
 
 Research listening data (ListenBrainz) never enters these tables (DATA_SOURCES.md, Privacy).
-Authentication arrives in Milestone 4, which adds credentials to `users`.
+Credentials (Milestone 4): the e-mail is stored lower-cased and unique; the password only as an
+Argon2id hash (app.domains.auth.passwords). Sessions live in `user_sessions` (ADR-017).
 """
 
 import uuid
@@ -31,7 +32,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -50,12 +51,39 @@ def _in(column: str, values: tuple[str, ...]) -> str:
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (CheckConstraint(_in("status", USER_STATUSES), name="status_valid"),)
+    __table_args__ = (
+        CheckConstraint(_in("status", USER_STATUSES), name="status_valid"),
+        CheckConstraint("email = lower(email)", name="email_lowercase"),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
+    email: Mapped[str] = mapped_column(String(254), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    display_name: Mapped[str | None] = mapped_column(String(80))
     status: Mapped[str] = mapped_column(String(16), server_default=text("'active'"))
+    # Terms and privacy acknowledgement at registration (spec §12.4, consent).
+    terms_accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
+
+
+class UserSession(Base):
+    """A login session. The browser holds an opaque random token in an HttpOnly cookie; only
+    its SHA-256 is stored, so a database leak does not reveal usable tokens."""
+
+    __tablename__ = "user_sessions"
+    __table_args__ = (Index("ix_user_sessions_user_id", "user_id"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = created_at_column()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    user_agent: Mapped[str | None] = mapped_column(String(256))
 
 
 class UserPreference(Base):
@@ -76,6 +104,10 @@ class UserPreference(Base):
     exploration_mode: Mapped[str | None] = mapped_column(String(16))
     # Personalization opt-out (spec §12.4): when false, recommendations ignore the user's data.
     personalization_enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    # Favourite mood mixes (keys of app.domains.recommendations.moods.MOODS), in order.
+    preferred_moods: Mapped[list[str]] = mapped_column(
+        ARRAY(String(64)), server_default=text("'{}'::varchar[]")
+    )
     updated_at: Mapped[datetime] = updated_at_column()
 
 

@@ -1,0 +1,32 @@
+/** TanStack Query keys, in one place so invalidation stays consistent. */
+export const keys = {
+  me: ["me"] as const,
+  preferences: ["preferences"] as const,
+  tasteProfile: ["taste-profile"] as const,
+  taste: ["taste"] as const,
+  forYou: (limit: number, exploration?: string) =>
+    ["for-you", limit, exploration ?? "default"] as const,
+  forYouAll: ["for-you"] as const,
+  hiddenGems: (limit: number) => ["hidden-gems", limit] as const,
+  because: ["because-you-listened"] as const,
+  moods: ["moods"] as const,
+  mood: (key: string, limit: number, round = 0) =>
+    ["mood", key, limit, round] as const,
+  similar: (trackId: string) => ["similar", trackId] as const,
+  similarArtists: (artistId: string) => ["similar-artists", artistId] as const,
+  artistRadio: (artistId: string) => ["artist-radio", artistId] as const,
+  genreRecs: (genre: string) => ["genre-recs", genre] as const,
+  popular: (kind: string) => ["popular", kind] as const,
+  track: (id: string) => ["track", id] as const,
+  artist: (id: string) => ["artist", id] as const,
+  genres: ["genres"] as const,
+  trackSearch: (q: string) => ["search", "tracks", q] as const,
+  artistSearch: (q: string, limit: number) =>
+    ["search", "artists", q, limit] as const,
+  feedback: (ids: string) => ["feedback", ids] as const,
+  feedbackAll: ["feedback"] as const,
+  history: (types: string) => ["history", types] as const,
+  playlists: ["playlists"] as const,
+  playlist: (id: string) => ["playlist", id] as const,
+  suggestions: (id: string) => ["playlist-suggestions", id] as const,
+};

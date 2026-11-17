@@ -16,6 +16,7 @@ from typing import Any
 import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.catalogue.repository import CatalogueRepository
 from app.domains.recommendations.models import ModelVersion
 from app.domains.recommendations.repository import RecommendationRepository
 from app.domains.users.events import EventType, FeedbackWeights, TrackSignals, aggregate_events
@@ -26,11 +27,14 @@ from app.domains.users.profile import (
     TasteProfile,
     TasteProfileConfig,
     build_taste_profile,
+    strongest_first,
 )
 from app.domains.users.repository import DeclaredRows, EventRows, UserRepository
 from app.domains.users.schemas import (
     ArtistAffinityOut,
     ArtistRef,
+    FeedbackState,
+    FeedbackStates,
     GenreAffinityOut,
     InteractionBatch,
     InteractionHistory,
@@ -39,7 +43,6 @@ from app.domains.users.schemas import (
     PreferencesIn,
     PreferencesOut,
     TasteProfileOut,
-    UserOut,
 )
 
 logger = logging.getLogger(__name__)
@@ -134,9 +137,11 @@ def profile_from_row(
     return TasteProfile(
         long_term_embedding=_vector(row.long_term_embedding),
         short_term_embedding=_vector(row.short_term_embedding),
-        genre_affinity=dict(row.genre_affinity),
-        artist_affinity={uuid.UUID(k): v for k, v in row.artist_affinity.items()},
-        negative_artists={uuid.UUID(k): v for k, v in row.negative_artists.items()},
+        genre_affinity=strongest_first(row.genre_affinity),
+        artist_affinity=strongest_first({uuid.UUID(k): v for k, v in row.artist_affinity.items()}),
+        negative_artists=strongest_first(
+            {uuid.UUID(k): v for k, v in row.negative_artists.items()}
+        ),
         excluded_artists=frozenset(declared.excluded_artists),
         excluded_genres=frozenset(declared.excluded_genres),
         disliked_tracks=frozenset(keys[i] for i in np.flatnonzero(signals.disliked).tolist()),
@@ -331,16 +336,6 @@ class UserService:
         self.users = UserRepository(session)
         self.profiles = TasteProfileService(session)
 
-    async def create(self) -> UserOut:
-        user = await self.users.create_user()
-        await self.session.commit()
-        logger.info("user created user=%s", user.id)
-        return UserOut(id=user.id, status=user.status, created_at=user.created_at)
-
-    async def get(self, user_id: uuid.UUID) -> UserOut:
-        user = await self.profiles.require_user(user_id)
-        return UserOut(id=user.id, status=user.status, created_at=user.created_at)
-
     async def record_events(
         self, user_id: uuid.UUID, batch: InteractionBatch
     ) -> InteractionsRecorded:
@@ -387,10 +382,19 @@ class UserService:
         )
 
     async def history(
-        self, user_id: uuid.UUID, limit: int, before: datetime | None
+        self,
+        user_id: uuid.UUID,
+        limit: int,
+        before: datetime | None,
+        event_types: Sequence[EventType] | None = None,
     ) -> InteractionHistory:
         await self.profiles.require_user(user_id)
-        rows = await self.users.history(user_id, limit + 1, before)
+        rows = await self.users.history(
+            user_id, limit + 1, before, [e.value for e in event_types or ()]
+        )
+        tracks = await CatalogueRepository(self.session).track_summaries(
+            list({r.track_id for r in rows[:limit]})
+        )
         items = [
             InteractionOut(
                 id=r.id,
@@ -401,12 +405,43 @@ class UserService:
                 position_ms=r.position_ms,
                 session_id=r.session_id,
                 source=r.source,
+                track=tracks.get(r.track_id),
             )
             for r in rows[:limit]
         ]
         return InteractionHistory(
             items=items, next_before=items[-1].occurred_at if len(rows) > limit else None
         )
+
+    async def feedback_states(
+        self, user_id: uuid.UUID, track_ids: Sequence[uuid.UUID]
+    ) -> FeedbackStates:
+        """Like, dislike and save states of the given tracks, from the user's events."""
+        wanted = set(track_ids)
+        events = await self.users.events(user_id)
+        rows = [i for i, t in enumerate(events.track_ids) if t in wanted]
+        states: dict[uuid.UUID, FeedbackState] = {
+            t: FeedbackState(liked=False, disliked=False, saved=False) for t in wanted
+        }
+        if rows:
+            keys = np.empty(len(rows), dtype=object)
+            keys[:] = [events.track_ids[i] for i in rows]
+            signals: TrackSignals[uuid.UUID] = aggregate_events(
+                keys,
+                [events.event_types[i] for i in rows],
+                np.zeros(len(rows)),
+                [events.positions_ms[i] for i in rows],
+                weights=FeedbackWeights(),
+                long_decay=TasteProfileConfig().long_decay,
+                short_decay=TasteProfileConfig().short_decay,
+            )
+            for row, track in enumerate(signals.keys):
+                states[track] = FeedbackState(
+                    liked=bool(signals.liked[row]),
+                    disliked=bool(signals.disliked[row]),
+                    saved=bool(signals.saved[row]),
+                )
+        return FeedbackStates(states=states)
 
     async def preferences(self, user_id: uuid.UUID) -> PreferencesOut:
         await self.profiles.require_user(user_id)
@@ -425,6 +460,7 @@ class UserService:
             ],
             preferred_genres=[n for _, n, p in rows.genres if p == "preferred"],
             excluded_genres=[n for _, n, p in rows.genres if p == "excluded"],
+            preferred_moods=list(rows.preference.preferred_moods) if rows.preference else [],
             updated_at=rows.preference.updated_at if rows.preference else None,
         )
 
@@ -435,6 +471,12 @@ class UserService:
         unknown = [str(a) for a in artist_ids if a not in known]
         if unknown:
             raise InvalidReferenceError("artists", unknown)
+        # Local import: the moods module imports this one.
+        from app.domains.recommendations.moods import MOODS
+
+        unknown_moods = [m for m in update.preferred_moods if m not in MOODS]
+        if unknown_moods:
+            raise InvalidReferenceError("moods", unknown_moods)
         names = [*update.preferred_genres, *update.excluded_genres]
         genres = await self.users.genres_by_name(names)
         missing = [n for n in names if n.lower() not in genres]
@@ -446,6 +488,7 @@ class UserService:
             if update.exploration_mode is None
             else update.exploration_mode.value,
             personalization_enabled=update.personalization_enabled,
+            preferred_moods=list(dict.fromkeys(update.preferred_moods)),
             artists=[
                 *((a, "preferred") for a in dict.fromkeys(update.preferred_artists)),
                 *((a, "excluded") for a in dict.fromkeys(update.excluded_artists)),

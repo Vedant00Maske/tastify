@@ -5,18 +5,13 @@ from datetime import UTC, datetime, timedelta
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.domains.catalogue.schemas import TrackSummary
 from app.domains.users.events import EventType
 from app.domains.users.profile import ExplorationMode
 
 MAX_BATCH = 500
 # Clients may be slightly ahead of the server clock; anything further is rejected.
 CLOCK_SKEW = timedelta(minutes=5)
-
-
-class UserOut(BaseModel):
-    id: uuid.UUID
-    status: str
-    created_at: datetime
 
 
 class InteractionIn(BaseModel):
@@ -63,6 +58,7 @@ class InteractionOut(BaseModel):
     position_ms: int | None
     session_id: uuid.UUID | None
     source: str
+    track: TrackSummary | None = None
 
 
 class InteractionHistory(BaseModel):
@@ -81,6 +77,7 @@ class PreferencesIn(BaseModel):
     excluded_artists: list[uuid.UUID] = Field(default_factory=list, max_length=200)
     preferred_genres: list[str] = Field(default_factory=list, max_length=30)
     excluded_genres: list[str] = Field(default_factory=list, max_length=50)
+    preferred_moods: list[str] = Field(default_factory=list, max_length=8)
 
     @field_validator("preferred_genres", "excluded_genres")
     @classmethod
@@ -112,6 +109,7 @@ class PreferencesOut(BaseModel):
     excluded_artists: list[ArtistRef]
     preferred_genres: list[str]
     excluded_genres: list[str]
+    preferred_moods: list[str]
     updated_at: datetime | None
 
 
@@ -156,3 +154,15 @@ class InteractionsRecorded(BaseModel):
     recorded: int
     duplicates: int
     profile: TasteProfileOut
+
+
+class FeedbackState(BaseModel):
+    liked: bool
+    disliked: bool
+    saved: bool
+
+
+class FeedbackStates(BaseModel):
+    """Current like/dislike/save state per requested track (latest event wins)."""
+
+    states: dict[uuid.UUID, FeedbackState]

@@ -34,6 +34,7 @@ from app.domains.users.events import Decay, FeedbackWeights, TrackSignals
 
 T = TypeVar("T", bound=Hashable)
 A = TypeVar("A", bound=Hashable)
+K = TypeVar("K", bound=Hashable)
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -172,6 +173,13 @@ def _top(values: Mapping[Any, float], limit: int) -> dict[Any, float]:
     return {k: round(v / top, 6) for k, v in ranked}
 
 
+def strongest_first(values: Mapping[K, float]) -> dict[K, float]:
+    """Affinities ordered strongest first, ties by key: the order every consumer relies on
+    (top genres, top artists). Stored profiles need it re-applied, because PostgreSQL JSONB does
+    not keep object key order."""
+    return dict(sorted(values.items(), key=lambda kv: (-kv[1], str(kv[0]))))
+
+
 def _ranked_tracks(
     keys: Sequence[T], weights: FloatArray, ages: FloatArray, eligible: npt.NDArray[np.bool_]
 ) -> list[T]:
@@ -244,6 +252,7 @@ def build_taste_profile(
     for artist in declared.preferred_artists:
         if artist not in excluded_artists:
             artist_affinity[artist] = 1.0
+    artist_affinity = strongest_first(artist_affinity)
 
     negative: dict[A, float] = {}
     for artist, value in artist_negative.items():
@@ -271,6 +280,7 @@ def build_taste_profile(
     for genre in declared.preferred_genres:
         if genre not in excluded_genres:
             genre_affinity[genre] = 1.0
+    genre_affinity = strongest_first(genre_affinity)
 
     ages = signals.last_age_days
     eligible = has_content if track_embeddings is not None else np.ones(n, dtype=np.bool_)

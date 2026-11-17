@@ -17,8 +17,10 @@ CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 
 FROM deps AS builder
 COPY . .
-# NEXT_PUBLIC_* values are inlined into the client bundle at build time.
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+# The browser calls the same-origin /api/v1, which the Next.js proxy forwards to the backend
+# (API_PROXY_TARGET, read at runtime). NEXT_PUBLIC_API_URL only overrides that path and is
+# inlined into the client bundle at build time; leave it unset unless you know you need it.
+ARG NEXT_PUBLIC_API_URL=/api/v1
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 

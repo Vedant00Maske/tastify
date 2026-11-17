@@ -70,6 +70,10 @@ POLICIES: Mapping[str, DiversityPolicy] = {
     "artist_radio": DiversityPolicy(
         "artist_radio", mmr_lambda=0.85, max_per_artist=2, seed_artist_share=0.4
     ),
+    # Mood mixes: diverse within the mood, two tracks per artist.
+    "mood": DiversityPolicy("mood", mmr_lambda=0.8, max_per_artist=2),
+    # Hidden gems: lesser-known discoveries, one track per artist.
+    "hidden_gems": DiversityPolicy("hidden_gems", mmr_lambda=0.8, max_per_artist=1, discovery=True),
     # Milestone 2 endpoints (documented; they keep using ranking.rerank).
     "similar_tracks": DiversityPolicy("similar_tracks", mmr_lambda=1.0, max_per_artist=2),
     "genre": DiversityPolicy("genre", mmr_lambda=1.0, max_per_artist=2),

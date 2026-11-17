@@ -248,7 +248,7 @@ erDiagram
 
 | Table | Purpose and key rules |
 | --- | --- |
-| `users` | TASTIFY users: id, `status` (`active`, `deleted`), timestamps. Credentials arrive with authentication in Milestone 4. |
+| `users` | TASTIFY users: id, `status` (`active`, `deleted`), timestamps. Milestone 4 adds the account columns (below). |
 | `user_preferences` | One row per user: `exploration_mode` (`familiar`, `balanced`, `explorer`; NULL = derived from behaviour) and `personalization_enabled` (opt-out, spec §12.4). No row means defaults. |
 | `user_artist_preferences`, `user_genre_preferences` | Declared favourite (`preferred`) or `excluded` artists and genres, one row each, validated by foreign keys. |
 | `user_interactions` | **Immutable** events (rule 7): `event_type` (`play`, `complete`, `replay`, `skip`, `like`, `unlike`, `dislike`, `undislike`, `save`, `unsave`, `playlist_add`), `occurred_at` (client time), `received_at` (server time), `position_ms` (how far playback got, e.g. an early skip), `session_id`, `source`. Unique (`user_id`, `client_event_id`) makes retried batches idempotent. Indexed by (user, occurred_at) and (track, event_type). Tracks referenced by events cannot be deleted (RESTRICT); deleting a user deletes their events (CASCADE). |
@@ -263,6 +263,30 @@ unchanged (one active version per type; serving rows of retired versions are del
 factors enter these tables: only item-level aggregates (ADR-016, DATA_SOURCES.md).
 
 ---
+
+## Implemented accounts and playlists schema (Milestone 4)
+
+ORM models: `backend/app/domains/users/models.py` and `backend/app/domains/playlists/models.py`.
+Migration: `013841aab22d`. Design: ADR-017.
+
+```mermaid
+erDiagram
+    users ||--o{ user_sessions : "signs in"
+    users ||--o{ playlists : "owns"
+    playlists ||--o{ playlist_tracks : "contains"
+    tracks ||--o{ playlist_tracks : ""
+```
+
+| Table | Purpose and key rules |
+| --- | --- |
+| `users` (new columns) | `email` (unique, CHECK lower-case), `password_hash` (Argon2id), `display_name`, `terms_accepted_at` (consent, required), `onboarding_completed_at`, `last_login_at`. |
+| `user_sessions` | One row per login: `token_hash` (SHA-256 of the cookie token, unique; the token itself is never stored), `created_at`, `expires_at` (sliding, 30 days), `last_seen_at`, `revoked_at`, `user_agent`. Deleted with the user (CASCADE). |
+| `user_preferences.preferred_moods` | Favourite mood keys (`varchar(64)[]`, default empty), validated against the mood recipes by the API. |
+| `playlists` | Owned by a user (CASCADE): `name` (≤ 120), `description`, `kind` (`manual`, `generated`, CHECK), `collection` (`for_you`, `mood`, `hidden_gems`, `genre`, `artist_radio`, CHECK; set for generated playlists) and the JSONB `generator` used to regenerate it. Indexed by (user, created_at). At most 200 per user (API rule). |
+| `playlist_tracks` | Primary key (playlist, track): a track appears once per playlist. `position` (contiguous from 0, rewritten on reorder) and `added_at`. Indexed by (playlist, position). Tracks in playlists cannot be deleted (RESTRICT); deleting a playlist deletes its rows. At most 500 per playlist (API rule). |
+
+The migration refuses to run while `users` has rows (the new account columns are required and
+Milestone 3 users had no credentials); downgrade removes the tables and columns again.
 
 ## Migrations workflow
 
@@ -300,6 +324,7 @@ linted and formatted with ruff automatically when generated.
 | `65ea8b207eac` | Catalogue schema (Milestone 1): provenance, canonical tracks/artists/albums, external ids, genres, features, match review; enables `pg_trgm`. |
 | `6ec567b027d8` | Recommendation models (Milestone 2): model registry, track popularity, track and artist embeddings with HNSW indexes. |
 | `a28199fd7847` | Users and hybrid models (Milestone 3): users, preferences, immutable interactions, taste profiles, collaborative factors (HNSW inner product) and neighbours, model artifacts; `model_type` allows `collaborative` and `hybrid`. Downgrade deletes those versions first. |
+| `013841aab22d` | Accounts and playlists (Milestone 4): account columns on `users`, `user_sessions`, `playlists`, `playlist_tracks`, `user_preferences.preferred_moods`. Refuses to run while users exist. |
 
 ### Databases
 

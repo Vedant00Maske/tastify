@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
-from app.domains.catalogue.schemas import ArtistDetail, TrackDetail, TrackSearchResponse
+from app.domains.catalogue.schemas import (
+    ArtistDetail,
+    ArtistSearchResponse,
+    GenreListResponse,
+    TrackDetail,
+    TrackSearchResponse,
+)
 from app.domains.catalogue.service import MusicCatalogService
 
 router = APIRouter(tags=["catalogue"])
@@ -54,6 +60,24 @@ async def get_track(catalogue: Catalogue, track_id: uuid.UUID) -> TrackDetail:
     if track is None:
         raise _not_found("Track")
     return track
+
+
+@router.get("/artists/search")
+async def search_artists(
+    catalogue: Catalogue,
+    q: Annotated[str, Query(min_length=2, max_length=200, description="Artist name")],
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> ArtistSearchResponse:
+    """Fuzzy artist search (onboarding, preferences, search page)."""
+    return ArtistSearchResponse(query=q, results=await catalogue.search_artists(q, limit))
+
+
+@router.get("/genres")
+async def list_genres(
+    catalogue: Catalogue, limit: Annotated[int, Query(ge=1, le=200)] = 60
+) -> GenreListResponse:
+    """The genres with the most tagged tracks (onboarding tiles, filters)."""
+    return GenreListResponse(genres=await catalogue.top_genres(limit))
 
 
 @router.get("/artists/{artist_id}")

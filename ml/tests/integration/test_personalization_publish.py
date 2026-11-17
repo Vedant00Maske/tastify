@@ -13,6 +13,8 @@ import scipy.sparse as sp
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.auth.schemas import RegisterIn
+from app.domains.auth.service import AuthService
 from app.domains.recommendations.models import (
     CF_DIMENSIONS,
     ModelArtifact,
@@ -21,6 +23,7 @@ from app.domains.recommendations.models import (
     TrackNeighbour,
 )
 from app.domains.recommendations.personalized import ARTIFACTS, PersonalizedRecommendationService
+from app.domains.users.models import User
 from app.domains.users.schemas import InteractionBatch, InteractionIn
 from app.domains.users.service import UserService
 from tastify_ml.recommendation.catalogue_data import load_catalogue
@@ -65,6 +68,19 @@ def cf_matrix(n_items: int) -> sp.csr_matrix:
     dense[20:, 3:] = rng.integers(1, 4, size=(20, 3))
     dense[rng.random(dense.shape) < 0.3] = 0
     return sp.csr_matrix(dense)
+
+
+async def demo_user(session: AsyncSession) -> User:
+    """A throwaway account (callers roll the transaction back)."""
+    user, _ = await AuthService(session).register(
+        RegisterIn(
+            email=f"demo-{uuid.uuid4().hex[:12]}@example.invalid",
+            password=f"demo-{uuid.uuid4().hex}",
+            accept_terms=True,
+        ),
+        "tastify-ml",
+    )
+    return user
 
 
 async def publish_all(session: AsyncSession, catalogue_ids: list[str]) -> dict[str, Any]:
@@ -152,7 +168,7 @@ async def test_served_collaborative_scores_match_the_offline_model(
     published = await publish_all(session, catalogue_ids)
     als = published["als"]
     users = UserService(session)
-    user = await users.create()
+    user = await demo_user(session)
     heard = {0: 3, 1: 2}  # item -> plays: a listener of the first group
     await users.record_events(
         user.id,
@@ -190,6 +206,6 @@ async def test_catalogue_reset_refuses_to_orphan_users(
 ) -> None:
     from tastify_ml.pipelines.catalogue import stage_reset
 
-    await UserService(session).create()
+    await demo_user(session)
     with pytest.raises(RuntimeError, match="TASTIFY users exist"):
         await stage_reset()

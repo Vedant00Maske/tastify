@@ -3,7 +3,7 @@
 > Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§16).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
-## Current roadmap (revised 2026-11-16)
+## Current roadmap (revised 2026-11-17)
 
 This plan supersedes the milestone numbering of the original §16 below, which is kept for reference.
 
@@ -12,8 +12,8 @@ This plan supersedes the milestone numbering of the original §16 below, which i
 | 0 – Engineering Foundation | Repository, tooling, CI, Docker, migrations, documentation | Done |
 | 1 – Music Data Foundation | Data source selection, catalogue ingestion, cleaning, normalization, entity resolution, database design | Done |
 | 2 – Recommendation Engine V1 | Popularity baseline, content-based recommendations, similarity search, offline evaluation | Done |
-| 3 – Personalized Hybrid Recommendation | Taste profiles, collaborative filtering, embeddings, candidate generation, ranking, diversity | Done (pending review) |
-| 4 – Complete User Application | Authentication, onboarding, discovery dashboard, playlists, feedback, personalized categories | Planned |
+| 3 – Personalized Hybrid Recommendation | Taste profiles, collaborative filtering, embeddings, candidate generation, ranking, diversity | Done |
+| 4 – Complete User Application | Authentication, onboarding, discovery dashboard, playlists, feedback, personalized categories | Done (pending review) |
 | 5 – Music Platform Integrations | ListenBrainz, MusicBrainz, Spotify and YouTube integrations, subject to API permissions | Planned |
 | 6 – Advanced Recommendation Intelligence | Context-aware ranking, cold-start improvements, natural-language playlists, experimentation, optimization | Planned |
 | 7 – Production Hardening | Security audits, performance, scalability, observability, deployment, data recovery | Planned |
@@ -57,7 +57,8 @@ replays) and generates a personalized mix that reflects it while introducing rel
 and the hybrid is benchmarked against the Milestone 2 models (reports/hybrid-benchmark.md, ADR-016).
 
 - [x] User data: users, immutable interaction events (idempotent ingestion), declared preferences,
-      derived taste profiles (migration `a28199fd7847`); development-only user API until auth (M4)
+      derived taste profiles (migration `a28199fd7847`); development-only user API, replaced by
+      authenticated routes in Milestone 4
 - [x] Taste profiles: long-term and short-term embeddings, genre and artist affinities, cautious
       negative preferences, exploration preference, declared preferences on top; reproducible,
       updated on every new interaction, stability measured on historical data
@@ -73,6 +74,34 @@ and the hybrid is benchmarked against the Milestone 2 models (reports/hybrid-ben
       segments; cold start; profile stability; a CC0-only variant for licensing
 - [x] Model versioning: `collaborative` and `hybrid` versions with artifacts and lineage; the
       Milestone 2 models kept active and snapshotted as the baseline
+
+### Milestone 4 deliverables
+
+Acceptance criterion: a person can create an account, tell TASTIFY their taste, and use a
+complete, accessible application (dashboard, discovery, moods, playlists, feedback, taste
+analytics, settings) whose recommendations respond to what they like, save and skip (ADR-017).
+
+- [x] Authentication: registration with consent, login, logout, password change, account
+      deletion; Argon2id, opaque `HttpOnly` session cookies stored as hashes, Origin-checked
+      state-changing requests, rate-limited login and registration (migration `013841aab22d`)
+- [x] Authenticated API: `/users/me/…`, `/interactions`, `/recommendations/for-you`; the
+      development-only user API removed; data export
+- [x] Collections: hidden gems, Surprise Me, "because you listened to", eight mood mixes
+      (genre, tempo and danceability recipes; regenerate), artist search and genre browsing
+- [x] Playlists: create (empty or generated from a collection), rename, add, remove, reorder,
+      regenerate, suggestions, delete; ownership-scoped
+- [x] Taste analytics: overview sentence, genre affinity, top artists, weekly trends, emerging and
+      fading genres, discovery statistics; only values that can be computed reliably
+- [x] Frontend design system: dark-first tokens (colours, type scale, spacing, radii, shadows),
+      UI primitives, generated covers and Cover Art Archive artwork, motion with reduced-motion
+- [x] App shell: sidebar, header search, persistent player (queue and "listen on" links, no
+      simulated playback), mobile navigation, skip link
+- [x] Pages: login, register, onboarding (genres, artists, moods and exclusions, exploration
+      slider, first mix), home, discover, moods, playlists, taste, search, settings, artist and
+      track pages, not-found and error pages; loading, empty and error states throughout
+- [x] Tests: backend unit and integration tests for auth, privacy, collections and playlists;
+      Vitest component and logic tests; Playwright journeys (register, onboarding, login, dashboard,
+      feedback, discovery, moods, playlists, taste, search, logout) against a mocked API
 
 ## 16. Development Roadmap
 

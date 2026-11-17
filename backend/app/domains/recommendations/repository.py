@@ -19,7 +19,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.catalogue.models import Artist, ArtistGenre, Genre, Track, TrackGenre
+from app.domains.catalogue.models import (
+    Artist,
+    ArtistGenre,
+    Genre,
+    Track,
+    TrackFeatures,
+    TrackGenre,
+)
 from app.domains.recommendations.models import (
     ArtistEmbedding,
     ModelArtifact,
@@ -49,6 +56,17 @@ class PopularRow:
     listeners: int
     recent_listeners: int
     trending_score: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class TagMember:
+    track_id: uuid.UUID
+    genre: str
+    affinity: float
+    popularity: float
+    listeners: int
+    tempo: float | None
+    danceability: float | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -504,3 +522,84 @@ class RecommendationRepository:
             select(Track.id, Track.artist_id, Track.title).where(Track.id.in_(set(track_ids)))
         )
         return {t: song_key(a, title) for t, a, title in rows}
+
+    # --- Milestone 4: mood and discovery collections -------------------------------------------
+
+    async def genre_ids(self, names: Sequence[str]) -> dict[str, uuid.UUID]:
+        """Genre ids by exact (lower-case) name; unknown names are left out."""
+        if not names:
+            return {}
+        rows = await self.session.execute(
+            select(Genre.name, Genre.id).where(
+                func.lower(Genre.name).in_([n.lower() for n in names])
+            )
+        )
+        return {name.lower(): genre_id for name, genre_id in rows}
+
+    async def tag_members(
+        self,
+        genre_ids: Sequence[uuid.UUID],
+        popularity_version_id: uuid.UUID,
+        min_affinity: float,
+        limit: int,
+    ) -> list[TagMember]:
+        """Tracks whose strongest affinity to any of `genre_ids` reaches `min_affinity`, with that
+        genre, their popularity and AcousticBrainz tempo and danceability (when measured). Most
+        central first (affinity, then popularity)."""
+        if not genre_ids:
+            return []
+        track_tags = _track_tag_weights(TrackGenre.genre_id.in_(genre_ids)).subquery()
+        artist_tags = _artist_tag_weights(ArtistGenre.genre_id.in_(genre_ids)).subquery()
+        tagged = union_all(
+            select(
+                track_tags.c.track_id.label("track_id"),
+                track_tags.c.genre_id.label("genre_id"),
+                (track_tags.c.weight * _level_weight(track_tags.c.level)).label("affinity"),
+            ),
+            select(
+                Track.id.label("track_id"),
+                artist_tags.c.genre_id.label("genre_id"),
+                (artist_tags.c.weight * LEVEL_WEIGHTS["artist"]).label("affinity"),
+            ).join(artist_tags, artist_tags.c.artist_id == Track.artist_id),
+        ).subquery()
+        ranked = select(
+            tagged.c.track_id,
+            tagged.c.genre_id,
+            tagged.c.affinity,
+            func.row_number()
+            .over(
+                partition_by=tagged.c.track_id,
+                order_by=(tagged.c.affinity.desc(), tagged.c.genre_id),
+            )
+            .label("rank"),
+        ).subquery()
+        features = (
+            select(TrackFeatures.track_id, TrackFeatures.tempo, TrackFeatures.danceability)
+            .where(TrackFeatures.feature_source == "acousticbrainz")
+            .subquery()
+        )
+        rows = await self.session.execute(
+            select(
+                ranked.c.track_id,
+                Genre.name,
+                ranked.c.affinity,
+                TrackPopularity.score,
+                TrackPopularity.listeners,
+                features.c.tempo,
+                features.c.danceability,
+            )
+            .join(Genre, Genre.id == ranked.c.genre_id)
+            .join(TrackPopularity, TrackPopularity.track_id == ranked.c.track_id)
+            .outerjoin(features, features.c.track_id == ranked.c.track_id)
+            .where(
+                ranked.c.rank == 1,
+                ranked.c.affinity >= min_affinity,
+                TrackPopularity.model_version_id == popularity_version_id,
+            )
+            .order_by(ranked.c.affinity.desc(), TrackPopularity.score.desc(), ranked.c.track_id)
+            .limit(limit)
+        )
+        return [
+            TagMember(t, g, float(a), float(p), int(n), tempo, dance)
+            for t, g, a, p, n, tempo, dance in rows
+        ]

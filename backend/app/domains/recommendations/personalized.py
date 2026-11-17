@@ -21,9 +21,10 @@ import io
 import json
 import logging
 import math
+import secrets
 import uuid
 from collections import OrderedDict
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -33,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.catalogue.models import Artist
 from app.domains.catalogue.repository import CatalogueRepository
+from app.domains.catalogue.schemas import TrackSummary
 from app.domains.recommendations import explanations
 from app.domains.recommendations.candidate_generation import (
     CandidateFilter,
@@ -69,14 +71,18 @@ from app.domains.recommendations.hybrid_ranking import (
 )
 from app.domains.recommendations.models import ModelVersion
 from app.domains.recommendations.ranking import (
+    CANDIDATE_POOL,
     GENRE_POPULARITY_WEIGHT,
     MIN_GENRE_AFFINITY,
     SIMILAR_ARTISTS_POOL,
+    Candidate,
     blended_score,
     genre_score,
+    rerank,
 )
 from app.domains.recommendations.repository import RecommendationRepository, TrackFacts
 from app.domains.recommendations.schemas import (
+    BecauseYouListened,
     CandidateSourceOut,
     Composition,
     PersonalizedItem,
@@ -105,6 +111,11 @@ MAX_CF_HISTORY = 1000
 MAX_ITEM_HISTORY = 300
 # Over-fetch from vector indexes so that enough unheard tracks remain after exclusion.
 MAX_OVERFETCH = 300
+# Hidden gems: popularity score log(1 + listeners) / log(1 + max listeners) at most this (about
+# 50 listeners over the 14-day window when the most played track has 1,350), mostly new artists.
+HIDDEN_GEM_MAX_POPULARITY = 0.55
+HIDDEN_GEM_DISCOVERY = 0.8
+SURPRISE_POOL = 10
 
 
 @dataclass(frozen=True)
@@ -444,8 +455,19 @@ class PersonalizedRecommendationService:
     # --- for you -----------------------------------------------------------------------------
 
     async def for_you(
-        self, user_id: uuid.UUID, limit: int, mode: ExplorationMode | None = None
+        self,
+        user_id: uuid.UUID,
+        limit: int,
+        mode: ExplorationMode | None = None,
+        *,
+        collection: str = "for_you",
+        exclude: Collection[uuid.UUID] = (),
     ) -> PersonalizedResponse:
+        """The personal mix. `collection` "hidden_gems" keeps only lesser-known tracks (popularity
+        score at most HIDDEN_GEM_MAX_POPULARITY) under the hidden-gems policy; `exclude` removes
+        tracks (e.g. a playlist's current tracks when it is regenerated)."""
+        if collection not in ("for_you", "hidden_gems"):
+            raise ValueError(f"unknown collection {collection}")
         context = await self.profiles.current(user_id)
         popularity = await self._require("popularity")
         content = await self.repository.active_version("content")
@@ -484,7 +506,7 @@ class PersonalizedRecommendationService:
             popularity=popularity,
             collaborative=collaborative,
             settings=settings,
-            heard=profile.heard_tracks,
+            heard=profile.heard_tracks | frozenset(exclude),
             cf_values=cf_values,
             query=profile_query(
                 profile.long_term_embedding,
@@ -507,7 +529,7 @@ class PersonalizedRecommendationService:
         facts = await self.repository.track_facts(items, popularity.id)
         heard_keys = await self.repository.song_keys(list(profile.heard_tracks))
         candidate_filter: CandidateFilter[uuid.UUID, uuid.UUID] = CandidateFilter(
-            heard=profile.heard_tracks,
+            heard=request.heard,
             disliked=profile.disliked_tracks,
             excluded_artists=profile.excluded_artists,
             heard_song_keys=frozenset(heard_keys.values()),
@@ -518,8 +540,18 @@ class PersonalizedRecommendationService:
             song_keys=[facts[t].song_key if t in facts else None for t in items],
             eligible=[t in facts for t in items],
         )
+        gems = collection == "hidden_gems"
+        if gems:
+            lesser_known = [
+                row
+                for row, track in enumerate(kept.items)
+                if facts[track].popularity <= HIDDEN_GEM_MAX_POPULARITY
+            ]
+            kept = kept.subset(lesser_known)
         cold = profile.history_size == 0
         strategy = Strategy.PERSONALIZED if not cold else Strategy.COLD_START
+        if gems:
+            strategy = Strategy.HIDDEN_GEMS
         if len(kept) == 0:
             return self._response(
                 user_id,
@@ -565,6 +597,9 @@ class PersonalizedRecommendationService:
         target = None if not personalized else profile.discovery_target(chosen_mode)
         discovery = np.array([personalized and a not in profile.known_artists for a in artists])
         policy = settings.for_you_policy()
+        if gems:
+            policy = POLICIES["hidden_gems"]
+            target = None if not personalized else max(target or 0.0, HIDDEN_GEM_DISCOVERY)
         picked = compose(
             relevance,
             limit=limit,
@@ -576,9 +611,14 @@ class PersonalizedRecommendationService:
             discovery_target=target if not cold else None,
         )
         reasons = await self._reasons(request, kept, picked, facts, features)
+        if gems:
+            reasons = [
+                explanations.hidden_gem_reason(reason, facts[candidates[i]].listeners)
+                for reason, i in zip(reasons, picked, strict=True)
+            ]
         ordered = [(candidates[i], float(relevance[i]), bool(discovery[i]), i) for i in picked]
         summaries = await self.catalogue.track_summaries([t for t, _, _, _ in ordered])
-        titles = {t: (s.title, s.artist) for t, s in summaries.items()}
+        titles = summaries
         logger.info(
             "for-you user=%s strategy=%s candidates=%d removed=%s ranker=%s",
             user_id,
@@ -758,7 +798,7 @@ class PersonalizedRecommendationService:
         target: float | None = None,
         mode_label: str | None = None,
         policy: str = "for_you",
-        titles: dict[uuid.UUID, tuple[str, str]] | None = None,
+        titles: Mapping[uuid.UUID, TrackSummary] | None = None,
     ) -> PersonalizedResponse:
         versions = {
             v.model_type: v.version
@@ -768,12 +808,15 @@ class PersonalizedRecommendationService:
         primary = hybrid or collaborative or content or popularity
         items = []
         for (track, score, discovery, row), reason in zip(ordered, reasons, strict=True):
-            title, artist = (titles or {}).get(track, ("", ""))
+            summary = (titles or {}).get(track)
             items.append(
                 PersonalizedItem(
                     track_id=track,
-                    title=title,
-                    artist=artist,
+                    title=summary.title if summary else "",
+                    artist=summary.artist if summary else "",
+                    artist_id=summary.artist_id if summary else None,
+                    album=summary.album_title if summary else None,
+                    artwork_url=summary.artwork_url if summary else None,
                     score=round(score, 4),
                     reason=reason,
                     discovery=discovery,
@@ -892,6 +935,9 @@ class PersonalizedRecommendationService:
                 track_id=track,
                 title=summaries[track].title,
                 artist=summaries[track].artist,
+                artist_id=summaries[track].artist_id,
+                album=summaries[track].album_title,
+                artwork_url=summaries[track].artwork_url,
                 score=round(float(relevance[i]), 4),
                 reason=reasons[track],
             )
@@ -912,3 +958,91 @@ class PersonalizedRecommendationService:
             len(items),
         )
         return response
+
+    # --- surprise and "because you listened to" -------------------------------------------------
+
+    async def surprise(self, user_id: uuid.UUID) -> PersonalizedResponse:
+        """One discovery picked at random from the user's top explorer-mode recommendations (a
+        fresh pick on every request; the candidates themselves are the personal ranking)."""
+        response = await self.for_you(user_id, SURPRISE_POOL, ExplorationMode.EXPLORER)
+        pool = [i for i in response.recommendations if i.discovery] or response.recommendations
+        if not pool:
+            return response.model_copy(update={"strategy": Strategy.SURPRISE})
+        pick = secrets.choice(pool)
+        item = pick.model_copy(update={"reason": explanations.surprise_reason(pick.reason)})
+        return response.model_copy(
+            update={"strategy": Strategy.SURPRISE, "recommendations": [item]}
+        )
+
+    async def because_you_listened(
+        self, user_id: uuid.UUID, seeds: int, limit: int
+    ) -> list[BecauseYouListened]:
+        """For the user's strongest recent tracks: what listeners of that track also play
+        (item-item neighbours), else its content neighbours; unheard tracks only."""
+        context = await self.profiles.current(user_id)
+        if not context.personalization_enabled:
+            return []
+        popularity = await self._require("popularity")
+        content = await self.repository.active_version("content")
+        collaborative = await self.repository.active_version("collaborative")
+        profile = context.profile
+        seed_tracks = list(dict.fromkeys([*profile.recent_tracks, *profile.seed_tracks]))[:seeds]
+        summaries = await self.catalogue.track_summaries(seed_tracks)
+        heard = profile.heard_tracks
+        heard_keys = set((await self.repository.song_keys(list(heard))).values())
+        sections: list[BecauseYouListened] = []
+        for seed in seed_tracks:
+            if seed not in summaries:
+                continue
+            pool: list[tuple[uuid.UUID, float]] = []
+            source = "collaborative"
+            if collaborative is not None:
+                rows = await self.repository.neighbour_rows(collaborative.id, [seed])
+                pool = sorted(((n, s) for _, n, s in rows), key=lambda kv: (-kv[1], str(kv[0])))
+            if not pool and content is not None:
+                vector = await self.repository.track_embedding(content.id, seed)
+                if vector is not None:
+                    source = "content"
+                    pool = await self.repository.nearest_tracks(
+                        content.id, vector, CANDIDATE_POOL, EF_SEARCH
+                    )
+            pool = [(t, s) for t, s in pool if t != seed and t not in heard]
+            facts = await self.repository.track_facts([t for t, _ in pool], popularity.id)
+            ranked = rerank(
+                (
+                    Candidate(t, s, facts[t].popularity, facts[t].artist_id, facts[t].song_key)
+                    for t, s in pool
+                    if t in facts
+                    and facts[t].song_key not in heard_keys
+                    and facts[t].artist_id not in profile.excluded_artists
+                ),
+                beta=0.0,
+                limit=limit,
+            )
+            items_summaries = await self.catalogue.track_summaries([r.item for r in ranked])
+            title = summaries[seed].title
+            reason = (
+                explanations.co_listened_reason(title)
+                if source == "collaborative"
+                else explanations.seed_similarity_reason(title, 0.0, 0).split(" (")[0]
+            )
+            items = [
+                RecommendationItem(
+                    track_id=r.item,
+                    title=items_summaries[r.item].title,
+                    artist=items_summaries[r.item].artist,
+                    artist_id=items_summaries[r.item].artist_id,
+                    album=items_summaries[r.item].album_title,
+                    artwork_url=items_summaries[r.item].artwork_url,
+                    score=round(r.score, 4),
+                    reason=reason,
+                )
+                for r in ranked
+                if r.item in items_summaries
+            ]
+            if items:
+                sections.append(
+                    BecauseYouListened(seed=summaries[seed], source=source, recommendations=items)
+                )
+        await self.session.commit()
+        return sections

@@ -13,9 +13,14 @@ export interface DisplayTrack {
   reason?: string;
   discovery?: boolean;
   sources?: string[];
+  /** The recommendation response it came from (feedback attribution). */
+  requestId?: string;
 }
 
-export function fromRecommendation(item: RecommendationItem): DisplayTrack {
+export function fromRecommendation(
+  item: RecommendationItem,
+  requestId?: string,
+): DisplayTrack {
   return {
     id: item.track_id,
     title: item.title,
@@ -26,6 +31,7 @@ export function fromRecommendation(item: RecommendationItem): DisplayTrack {
     reason: item.reason,
     discovery: item.discovery,
     sources: item.sources?.map((s) => s.source),
+    requestId,
   };
 }
 

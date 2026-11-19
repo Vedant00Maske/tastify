@@ -20,7 +20,15 @@ Sleep = Callable[[float], Awaitable[None]]
 
 
 class ProviderError(RuntimeError):
-    pass
+    """A provider request failed. `status_code` is the provider's HTTP status (None for network
+    failures); `retry_after` is how long the provider asked us to wait, when it said so."""
+
+    def __init__(
+        self, message: str, *, status_code: int | None = None, retry_after: float | None = None
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.retry_after = retry_after
 
 
 class RateLimitedClient:
@@ -34,6 +42,8 @@ class RateLimitedClient:
         timeout: float = 60.0,
         transport: httpx.AsyncBaseTransport | None = None,
         sleep: Sleep = asyncio.sleep,
+        max_wait: float | None = None,
+        retry_statuses: frozenset[int] | set[int] = RETRYABLE_STATUS,
     ) -> None:
         self._client = httpx.AsyncClient(
             base_url=base_url,
@@ -44,6 +54,10 @@ class RateLimitedClient:
         self._min_interval = min_interval
         self._max_retries = max_retries
         self._sleep = sleep
+        # Interactive callers cap how long one request may wait for a provider's rate limit:
+        # beyond it the error is raised with `retry_after`, instead of holding the request.
+        self._max_wait = max_wait
+        self._retry_statuses = frozenset(retry_statuses)
         self._lock = asyncio.Lock()
         self._next_request_at = 0.0
 
@@ -81,18 +95,28 @@ class RateLimitedClient:
         return min(60.0, 2.0**attempt)
 
     async def request_json(self, method: str, path: str, **kwargs: Any) -> Any:
+        response = await self.request(method, path, **kwargs)
+        return response.json() if response.content else None
+
+    async def request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         for attempt in range(1, self._max_retries + 1):
             await self._wait_turn()
             try:
                 response = await self._client.request(method, path, **kwargs)
             except httpx.TransportError as exc:
                 if attempt == self._max_retries:
-                    raise ProviderError(f"{method} {path} failed: {exc}") from exc
+                    raise ProviderError(f"{method} {path} failed: {type(exc).__name__}") from exc
                 await self._sleep(min(60.0, 2.0**attempt))
                 continue
             self._respect_rate_limit_headers(response)
-            if response.status_code in RETRYABLE_STATUS and attempt < self._max_retries:
+            if response.status_code in self._retry_statuses and attempt < self._max_retries:
                 wait = self._retry_after(response, attempt)
+                if self._max_wait is not None and wait > self._max_wait:
+                    raise ProviderError(
+                        f"{method} {path} -> HTTP {response.status_code}",
+                        status_code=response.status_code,
+                        retry_after=wait,
+                    )
                 logger.warning(
                     "%s %s -> %s; retrying in %.0fs", method, path, response.status_code, wait
                 )
@@ -100,7 +124,11 @@ class RateLimitedClient:
                 continue
             if response.status_code >= 400:
                 raise ProviderError(
-                    f"{method} {path} -> HTTP {response.status_code}: {response.text[:200]}"
+                    f"{method} {path} -> HTTP {response.status_code}: {response.text[:200]}",
+                    status_code=response.status_code,
+                    retry_after=self._retry_after(response, attempt)
+                    if response.status_code == 429
+                    else None,
                 )
-            return response.json() if response.content else None
+            return response
         raise ProviderError(f"{method} {path} failed after {self._max_retries} attempts")

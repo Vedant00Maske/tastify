@@ -2,7 +2,9 @@
 
 Includes the account (never the password hash), declared preferences, every interaction event,
 the derived taste profile and every playlist with its tracks. Sessions are listed without their
-token hashes.
+token hashes. Recommendations shown (Milestone 6 logs) are included with their items and
+experiment variant. Connected music services are listed with what was imported and exported, never
+with their access or refresh tokens.
 """
 
 from datetime import UTC, datetime
@@ -11,7 +13,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.integrations.models import PlaylistExport, ProviderConnection, ProviderImport
 from app.domains.playlists.models import Playlist, PlaylistTrack
+from app.domains.recommendations.logging_models import RecommendationLog, RecommendationRequest
 from app.domains.users.models import User, UserInteraction, UserSession, UserTasteProfile
 from app.domains.users.service import UserService
 
@@ -47,6 +51,48 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
     sessions = (
         await session.scalars(select(UserSession).where(UserSession.user_id == user.id))
     ).all()
+    shown = (
+        await session.scalars(
+            select(RecommendationRequest)
+            .where(RecommendationRequest.user_id == user.id)
+            .order_by(RecommendationRequest.created_at)
+        )
+    ).all()
+    shown_items: dict[Any, list[dict[str, Any]]] = {}
+    if shown:
+        for item in (
+            await session.scalars(
+                select(RecommendationLog)
+                .where(RecommendationLog.user_id == user.id)
+                .order_by(RecommendationLog.request_id, RecommendationLog.position)
+            )
+        ).all():
+            shown_items.setdefault(item.request_id, []).append(
+                {"track_id": item.track_id, "position": item.position, "score": item.ranking_score}
+            )
+    connections = (
+        await session.scalars(
+            select(ProviderConnection).where(ProviderConnection.user_id == user.id)
+        )
+    ).all()
+    imports = (
+        await session.scalars(
+            select(ProviderImport)
+            .where(ProviderImport.user_id == user.id)
+            .order_by(ProviderImport.started_at)
+        )
+    ).all()
+    exports = (
+        (
+            await session.scalars(
+                select(PlaylistExport).where(
+                    PlaylistExport.playlist_id.in_([p.id for p in playlists])
+                )
+            )
+        ).all()
+        if playlists
+        else []
+    )
     return {
         "export_version": EXPORT_VERSION,
         "exported_at": datetime.now(UTC),
@@ -100,6 +146,54 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
                 "tracks": playlist_tracks.get(p.id, []),
             }
             for p in playlists
+        ],
+        "connected_services": [
+            {
+                "provider": c.provider,
+                "external_user_id": c.external_user_id,
+                "external_name": c.external_name,
+                "scopes": c.scopes,
+                "status": c.status,
+                "connected_at": c.connected_at,
+            }
+            for c in connections
+        ],
+        "imports": [
+            {
+                "provider": r.provider,
+                "status": r.status,
+                "fetched": r.fetched,
+                "matched": r.matched,
+                "imported": r.imported,
+                "started_at": r.started_at,
+                "finished_at": r.finished_at,
+            }
+            for r in imports
+        ],
+        "playlist_exports": [
+            {
+                "playlist_id": x.playlist_id,
+                "provider": x.provider,
+                "external_playlist_id": x.external_playlist_id,
+                "external_url": x.external_url,
+                "status": x.status,
+                "exported": x.exported,
+                "completed_at": x.completed_at,
+            }
+            for x in exports
+        ],
+        "recommendations_shown": [
+            {
+                "request_id": r.id,
+                "category": r.category,
+                "strategy": r.strategy,
+                "experiment": r.experiment_key,
+                "variant": r.variant,
+                "context": r.context,
+                "created_at": r.created_at,
+                "items": shown_items.get(r.id, []),
+            }
+            for r in shown
         ],
         "sessions": [
             {

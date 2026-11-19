@@ -2,6 +2,7 @@
 
 import uuid
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -23,6 +24,8 @@ class Strategy(StrEnum):
     HIDDEN_GEMS = "hidden_gems"
     BECAUSE_YOU_LISTENED = "because_you_listened"
     SURPRISE = "surprise"
+    # Milestone 6
+    CUSTOM = "custom"
 
 
 class PopularKind(StrEnum):
@@ -93,6 +96,12 @@ class PersonalizedResponse(RecommendationResponse):
     composition: Composition
     candidate_sources: list[SourceStatusOut]
     recommendations: list[PersonalizedItem]  # type: ignore[assignment]
+    context: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Context signals applied (session evidence, daypart) and their weights.",
+    )
+    experiment: str | None = None
+    variant: str | None = None
 
 
 # --- Milestone 4 ---------------------------------------------------------------------------------

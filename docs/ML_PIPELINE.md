@@ -286,6 +286,19 @@ Ranking rules (candidate pool, popularity blend, artist cap, one version per son
 `backend/app/domains/recommendations/ranking.py` and are called by both the API and the evaluation
 (`tastify_ml/evaluation/recommenders.py`), so offline metrics describe the served ranking.
 
+## Context experiment (Milestone 6)
+
+`python -m tastify_ml context` asks whether time of day or the current session predicts what a
+listener plays, on the research listens, before either is used in ranking. Chronological split
+(train, two validation days, two test days); research users' UTC offsets inferred from their
+quietest hours; genre cross-entropy of held-out listens under the overall profile, a daypart
+profile (local time, UTC and shuffled controls) and a session profile (previous hour, with the
+same hour a day earlier as control); shrinkage chosen on validation. Writes
+`docs/reports/context-benchmark.md`. Outcome and the serving decision: ADR-019.
+
+`python -m tastify_ml experiments create|start|stop|report|prune` manages online experiments and
+recommendation log retention (ADR-019).
+
 ## Implemented personalization pipeline (Milestone 3)
 
 Design: ADR-016. Results: [reports/hybrid-benchmark.md](reports/hybrid-benchmark.md).

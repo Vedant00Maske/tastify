@@ -157,6 +157,13 @@ export class MockApi {
     }
   >();
   unhandled: string[] = [];
+  deleted = false;
+  customPrompts: Record<string, unknown>[] = [];
+  // Integrations (Milestone 5): ListenBrainz connects with a token; nothing else is configured.
+  listenbrainzToken = "lb-token-0123456789";
+  lbConnected = false;
+  lastImport: Record<string, unknown> | null = null;
+  exportsByPlaylist = new Map<string, Record<string, unknown>[]>();
   private playlistCounter = 0;
 
   constructor(private readonly context: BrowserContext) {}
@@ -336,6 +343,14 @@ export class MockApi {
       if (body.onboarding_completed) this.onboarded = true;
       return json(this.me());
     }
+    if (path === "/users/me" && method === "DELETE") {
+      if (body?.password !== this.password)
+        return error(403, "password is wrong");
+      this.signedIn = false;
+      this.deleted = true;
+      await this.context.clearCookies();
+      return noContent();
+    }
     if (path === "/users/me/preferences" && method === "GET")
       return json(this.preferences);
     if (path === "/users/me/preferences" && method === "PUT") {
@@ -469,6 +484,44 @@ export class MockApi {
       return json(
         personalized("hidden_gems", TRACKS.slice(2, 5), "A hidden gem"),
       );
+    if (path === "/recommendations/custom" && method === "POST") {
+      const prompt = String(body.prompt);
+      if (/glorb/i.test(prompt)) {
+        return route.fulfill({
+          status: 422,
+          json: {
+            detail: {
+              message:
+                "No genre, mood or artist in this prompt matched the catalogue.",
+              code: "prompt_not_understood",
+              ignored: ["glorbic"],
+            },
+          },
+        });
+      }
+      this.customPrompts.push(body);
+      const exclude = new Set<string>(body.exclude ?? []);
+      const tracks = TRACKS.filter((t) => !exclude.has(t.id)).slice(0, 3);
+      return json({
+        ...response("custom", tracks, "alternative rock (fit 0.92)"),
+        prompt,
+        personalized: true,
+        interpretation: {
+          genres: ["alternative rock"],
+          excluded_genres: ["metal"],
+          moods: [],
+          artists: [{ id: ARTISTS[0].id, name: "Radiohead" }],
+          excluded_artists: [],
+          tempo: [120, null],
+          danceability: [null, null],
+          years: [null, null],
+          popularity: null,
+          exploration_level: body.exploration_level ?? null,
+          ignored: ["vibes"],
+          summary: "alternative rock; near Radiohead; over 120 BPM; no metal",
+        },
+      });
+    }
     if (path === "/recommendations/surprise")
       return json(personalized("surprise", [TRACKS[4]], "A surprise for you"));
     if (path === "/recommendations/because-you-listened") {
@@ -561,6 +614,98 @@ export class MockApi {
       return json({ items, next_before: null });
     }
 
+    // --- integrations -----------------------------------------------------------------------
+    if (path === "/integrations" && method === "GET")
+      return json(this.integrations());
+    if (path === "/integrations/listenbrainz/connect" && method === "POST") {
+      if (body.token !== this.listenbrainzToken) {
+        return route.fulfill({
+          status: 422,
+          json: {
+            detail: {
+              message: "ListenBrainz did not accept this token",
+              code: "invalid_credentials",
+            },
+          },
+        });
+      }
+      this.lbConnected = true;
+      return json(this.integrations());
+    }
+    if (path === "/integrations/listenbrainz/import" && method === "POST") {
+      if (!body.consent) return error(422, "consent required");
+      this.lastImport = {
+        id: uuid(8000),
+        provider: "listenbrainz",
+        status: "completed",
+        fetched: 3,
+        matched: 2,
+        imported: 2,
+        duplicates: 0,
+        error: null,
+        started_at: "2026-11-17T09:00:00Z",
+        finished_at: "2026-11-17T09:00:05Z",
+      };
+      for (const track of TRACKS.slice(0, 2))
+        this.events.push({ track_id: track.id, event_type: "play" });
+      return json(this.lastImport);
+    }
+    if (path === "/integrations/listenbrainz" && method === "DELETE") {
+      this.lbConnected = false;
+      if (url.searchParams.get("delete_imported") === "true") this.events = [];
+      return noContent();
+    }
+    if (path === "/integrations/imports")
+      return json(this.lastImport ? [this.lastImport] : []);
+    if (path === "/integrations/musicbrainz/search") {
+      return json({
+        query: url.searchParams.get("q"),
+        results: [
+          {
+            mbid: "8f3471b5-7e6a-48da-86a9-c1c07a0f47ae",
+            title: "Not Yet Here",
+            artist: "Someone New",
+            release: "Debut",
+            length_ms: 200000,
+            url: "https://musicbrainz.org/recording/8f3471b5-7e6a-48da-86a9-c1c07a0f47ae",
+            track_id: null,
+          },
+        ],
+      });
+    }
+    const exportsMatch = path.match(/^\/playlists\/([0-9a-f-]{36})\/exports?$/);
+    if (exportsMatch) {
+      const id = exportsMatch[1];
+      if (!this.playlists.has(id)) return error(404, "playlist not found");
+      if (method === "GET")
+        return json({ exports: this.exportsByPlaylist.get(id) ?? [] });
+      if (!this.lbConnected || body.provider !== "listenbrainz") {
+        return route.fulfill({
+          status: 409,
+          json: {
+            detail: {
+              message: "connect listenbrainz first",
+              code: "not_connected",
+            },
+          },
+        });
+      }
+      const record = {
+        provider: "listenbrainz",
+        status: "completed",
+        external_url:
+          "https://listenbrainz.org/playlist/7a2c9a5e-0000-4000-8000-000000000001/",
+        exported: this.playlists.get(id)!.trackIds.length,
+        unmatched: 0,
+        attempts: 1,
+        error: null,
+        updated_at: "2026-11-17T09:00:00Z",
+        completed_at: "2026-11-17T09:00:00Z",
+      };
+      this.exportsByPlaylist.set(id, [record]);
+      return json(record);
+    }
+
     // --- playlists --------------------------------------------------------------------------
     if (path === "/playlists" && method === "GET") {
       return json({
@@ -628,6 +773,52 @@ export class MockApi {
 
     this.unhandled.push(`${method} ${path}`);
     return error(404, `mock: no handler for ${method} ${path}`);
+  }
+
+  private integrations() {
+    const base = { scopes: [], connected_at: "2026-11-17T08:00:00Z" };
+    return {
+      tokens_configured: true,
+      providers: [
+        {
+          provider: "listenbrainz",
+          name: "ListenBrainz",
+          description: "Import your listening history and export playlists.",
+          auth: "token",
+          capabilities: ["export_playlist", "import_history"],
+          available: true,
+          max_export_tracks: 500,
+          connection: this.lbConnected
+            ? {
+                ...base,
+                status: "active",
+                external_name: "lb_listener",
+                last_import: this.lastImport,
+              }
+            : null,
+        },
+        {
+          provider: "spotify",
+          name: "Spotify",
+          description: "Import saved tracks and export playlists.",
+          auth: "oauth",
+          capabilities: ["export_playlist", "import_history"],
+          available: false,
+          max_export_tracks: 500,
+          connection: null,
+        },
+        {
+          provider: "musicbrainz",
+          name: "MusicBrainz",
+          description: "Open music encyclopedia.",
+          auth: "none",
+          capabilities: ["search_tracks"],
+          available: true,
+          max_export_tracks: 500,
+          connection: null,
+        },
+      ],
+    };
   }
 
   private async profileFor() {

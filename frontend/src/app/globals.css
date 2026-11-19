@@ -14,7 +14,8 @@
   --color-border: #34372f;
   --color-fg: #f4f2ea;
   --color-fg-secondary: #a6a79d;
-  --color-fg-muted: #74776d;
+  /* Spec: #74776D. Lightened to meet WCAG AA (4.5:1) for small text on every surface. */
+  --color-fg-muted: #9a9d93;
   --color-accent: #d7f36a;
   --color-accent-hover: #e4ff83;
   --color-accent-muted: #303b1d;

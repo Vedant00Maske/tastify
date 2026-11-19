@@ -1,6 +1,7 @@
 "use client";
 
-import { Clock, Search, X } from "lucide-react";
+import { Clock, ExternalLink, Search, X } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -21,6 +22,7 @@ import {
   useArtistSearch,
   useTrackSearch,
 } from "@/features/recommendations/queries";
+import { useMusicBrainzSearch } from "@/features/integrations/queries";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useRecentSearches } from "@/hooks/use-recent-searches";
 
@@ -70,6 +72,82 @@ function TrackResults({ query, limit }: { query: string; limit?: number }) {
   if (!results.length)
     return <p className="text-support text-fg-muted">No tracks found.</p>;
   return <TrackRows label={`Tracks matching ${query}`} tracks={results} />;
+}
+
+/**
+ * Recordings TASTIFY does not have yet, found on MusicBrainz on request (it allows one request
+ * per second for the whole app, so it is never searched on every keystroke).
+ */
+function MusicBrainzResults({ query }: { query: string }) {
+  const [asked, setAsked] = useState<string | null>(null);
+  const search = useMusicBrainzSearch(query, asked === query);
+  if (asked !== query) {
+    return (
+      <div className="flex flex-wrap items-center gap-3 rounded-card border border-dashed border-border p-4">
+        <p className="flex-1 text-support text-fg-secondary">
+          Missing something? Look it up on MusicBrainz, the open music
+          encyclopedia TASTIFY builds on.
+        </p>
+        <Button variant="secondary" size="sm" onClick={() => setAsked(query)}>
+          <Search /> Search MusicBrainz
+        </Button>
+      </div>
+    );
+  }
+  if (search.isPending) return <RowsSkeleton count={3} />;
+  if (search.isError) {
+    return (
+      <ErrorState
+        message="MusicBrainz could not be searched right now."
+        onRetry={() => void search.refetch()}
+      />
+    );
+  }
+  if (!search.data.results.length) {
+    return (
+      <p className="text-support text-fg-muted">
+        MusicBrainz has no recordings for this search.
+      </p>
+    );
+  }
+  return (
+    <ul aria-label="MusicBrainz recordings" className="flex flex-col gap-1">
+      {search.data.results.map((recording) => (
+        <li
+          key={recording.mbid}
+          className="flex items-center justify-between gap-3 rounded-button px-3 py-2 hover:bg-surface"
+        >
+          <div className="min-w-0">
+            <p className="truncate font-medium">{recording.title}</p>
+            <p className="truncate text-support text-fg-secondary">
+              {recording.artist}
+              {recording.release ? (
+                <span className="text-fg-muted"> · {recording.release}</span>
+              ) : null}
+            </p>
+          </div>
+          {recording.track_id ? (
+            <Link
+              href={`/tracks/${recording.track_id}`}
+              className="shrink-0 text-support font-semibold text-accent hover:underline"
+            >
+              In TASTIFY
+            </Link>
+          ) : (
+            <a
+              href={recording.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center gap-1 text-support text-fg-secondary hover:text-fg"
+            >
+              MusicBrainz <ExternalLink className="size-3.5" aria-hidden />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function SearchPage() {
@@ -183,6 +261,9 @@ export function SearchPage() {
             </Section>
             <Section title="Tracks">
               <TrackResults query={query} limit={10} />
+            </Section>
+            <Section title="Beyond the catalogue">
+              <MusicBrainzResults query={query} />
             </Section>
           </TabsContent>
           <TabsContent value="tracks">

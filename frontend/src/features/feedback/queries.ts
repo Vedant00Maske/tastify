@@ -40,10 +40,15 @@ export function useFeedback() {
     mutationFn: ({
       trackId,
       eventType,
+      requestId,
     }: {
       trackId: string;
       eventType: EventType;
-    }) => interactions.record([{ track_id: trackId, event_type: eventType }]),
+      requestId?: string;
+    }) =>
+      interactions.record([
+        { track_id: trackId, event_type: eventType, request_id: requestId },
+      ]),
     onMutate: async ({ trackId, eventType }) => {
       await client.cancelQueries({ queryKey: keys.feedbackAll });
       const snapshots = client.getQueriesData<{

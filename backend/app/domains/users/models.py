@@ -149,6 +149,7 @@ class UserInteraction(Base):
         UniqueConstraint("user_id", "client_event_id", name="uq_user_interactions_client_event"),
         Index("ix_user_interactions_user_id_occurred_at", "user_id", "occurred_at"),
         Index("ix_user_interactions_track_id_event_type", "track_id", "event_type"),
+        Index("ix_user_interactions_request_id", "request_id"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -166,6 +167,9 @@ class UserInteraction(Base):
     position_ms: Mapped[int | None] = mapped_column(Integer)
     # Client-generated id; retries with the same id are ignored.
     client_event_id: Mapped[str | None] = mapped_column(String(64))
+    # The recommendation response the feedback was given on (Milestone 6 experiments). No foreign
+    # key: recommendation logs are pruned after their retention period, events are not.
+    request_id: Mapped[uuid.UUID | None] = mapped_column()
 
 
 class UserTasteProfile(Base):

@@ -31,6 +31,10 @@ class InteractionIn(BaseModel):
         pattern=r"^[A-Za-z0-9._:-]+$",
         description="Idempotency key: an event with an already recorded id is ignored.",
     )
+    request_id: uuid.UUID | None = Field(
+        default=None,
+        description="The recommendation response this feedback was given on (experiments).",
+    )
 
     @field_validator("occurred_at")
     @classmethod

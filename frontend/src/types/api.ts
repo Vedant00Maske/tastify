@@ -142,6 +142,7 @@ export const StrategySchema = z.enum([
   "hidden_gems",
   "because_you_listened",
   "surprise",
+  "custom",
 ]);
 
 export const RecommendationResponseSchema = z.object({
@@ -175,6 +176,9 @@ export const PersonalizedResponseSchema = RecommendationResponseSchema.extend({
       detail: z.string().nullable(),
     }),
   ),
+  context: z.record(z.string(), z.unknown()).optional(),
+  experiment: z.string().nullable().optional(),
+  variant: z.string().nullable().optional(),
 });
 export type PersonalizedResponse = z.infer<typeof PersonalizedResponseSchema>;
 
@@ -361,6 +365,7 @@ export const CollectionSchema = z.enum([
   "hidden_gems",
   "genre",
   "artist_radio",
+  "custom",
 ]);
 export type Collection = z.infer<typeof CollectionSchema>;
 
@@ -369,6 +374,8 @@ export interface Generator {
   mood?: string;
   genre?: string;
   artist_id?: string;
+  prompt?: string;
+  exploration_level?: number | null;
   size?: number;
 }
 
@@ -398,3 +405,109 @@ export type PlaylistTrack = PlaylistDetail["tracks"][number];
 export const PlaylistListSchema = z.object({
   playlists: z.array(PlaylistSummarySchema),
 });
+
+// --- integrations (Milestone 5) ------------------------------------------------------------
+
+export const ImportRunSchema = z.object({
+  id: z.uuid(),
+  provider: z.string(),
+  status: z.enum(["running", "completed", "failed"]),
+  fetched: z.number(),
+  matched: z.number(),
+  imported: z.number(),
+  duplicates: z.number(),
+  error: z.string().nullable(),
+  started_at: z.string(),
+  finished_at: z.string().nullable(),
+});
+export type ImportRun = z.infer<typeof ImportRunSchema>;
+
+export const ProviderSchema = z.object({
+  provider: z.string(),
+  name: z.string(),
+  description: z.string(),
+  auth: z.enum(["token", "oauth", "none"]),
+  capabilities: z.array(z.string()),
+  available: z.boolean(),
+  max_export_tracks: z.number(),
+  connection: z
+    .object({
+      status: z.enum(["active", "reauth_required"]),
+      external_name: z.string().nullable(),
+      scopes: z.array(z.string()),
+      connected_at: z.string(),
+      last_import: ImportRunSchema.nullable(),
+    })
+    .nullable(),
+});
+export type Provider = z.infer<typeof ProviderSchema>;
+export const ProviderListSchema = z.object({
+  providers: z.array(ProviderSchema),
+  tokens_configured: z.boolean(),
+});
+
+export const PlaylistExportSchema = z.object({
+  provider: z.string(),
+  status: z.enum(["running", "completed", "failed"]),
+  external_url: z.string().nullable(),
+  exported: z.number(),
+  unmatched: z.number(),
+  attempts: z.number(),
+  error: z.string().nullable(),
+  updated_at: z.string(),
+  completed_at: z.string().nullable(),
+});
+export type PlaylistExport = z.infer<typeof PlaylistExportSchema>;
+export const PlaylistExportListSchema = z.object({
+  exports: z.array(PlaylistExportSchema),
+});
+
+export const RecordingSearchSchema = z.object({
+  query: z.string(),
+  results: z.array(
+    z.object({
+      mbid: z.string(),
+      title: z.string(),
+      artist: z.string(),
+      release: z.string().nullable(),
+      length_ms: z.number().nullable(),
+      url: z.string(),
+      track_id: z.uuid().nullable(),
+    }),
+  ),
+});
+export const AuthorizeSchema = z.object({ url: z.string() });
+
+// --- prompt playlists (Milestone 6) ----------------------------------------------------------
+
+const ArtistRefSchema = z.object({ id: z.uuid(), name: z.string() });
+const BoundsSchema = z.tuple([z.number().nullable(), z.number().nullable()]);
+
+export const CustomResponseSchema = RecommendationResponseSchema.extend({
+  prompt: z.string(),
+  personalized: z.boolean(),
+  interpretation: z.object({
+    genres: z.array(z.string()),
+    excluded_genres: z.array(z.string()),
+    moods: z.array(z.string()),
+    artists: z.array(ArtistRefSchema),
+    excluded_artists: z.array(ArtistRefSchema),
+    tempo: BoundsSchema,
+    danceability: BoundsSchema,
+    years: BoundsSchema,
+    popularity: z.string().nullable(),
+    exploration_level: z.number().nullable(),
+    ignored: z.array(z.string()),
+    summary: z.string(),
+  }),
+});
+export type CustomResponse = z.infer<typeof CustomResponseSchema>;
+export type Interpretation = CustomResponse["interpretation"];
+
+export interface CustomRequest {
+  prompt: string;
+  limit?: number;
+  exploration_level?: number | null;
+  exclude_previously_heard?: boolean;
+  exclude?: string[];
+}

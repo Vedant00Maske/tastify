@@ -24,3 +24,5 @@ marked _Superseded_ and linked to the ADR that replaces it.
 | [ADR-015](ADR-015-recommendation-engine-v1.md)                | Recommendation engine V1: popularity and content embeddings in pgvector | Accepted |
 | [ADR-016](ADR-016-personalized-hybrid-recommendation.md)    | Personalized hybrid recommendation: profiles, collaborative filtering, LambdaRank, diversity | Accepted |
 | [ADR-017](ADR-017-authentication-and-user-application.md)   | Authentication and the user application: server sessions, same-origin proxy, honest playback | Accepted |
+| [ADR-018](ADR-018-music-platform-integrations.md)          | Music platform integrations: adapters, encrypted tokens, consented imports, retry-safe exports | Accepted |
+| [ADR-019](ADR-019-context-prompts-and-experiments.md)       | Advanced recommendation intelligence: evidence-based context, prompt playlists, online experiments | Accepted |

@@ -57,6 +57,30 @@ class Settings(BaseSettings):
     cover_art_enabled: bool = True
     cover_art_url: str = "https://coverartarchive.org/release-group/{mbid}/front-500"
 
+    # --- Music platform integrations (Milestone 5; INTEGRATIONS.md, ADR-018) -----------------
+    # 32 random bytes, base64: encrypts provider access and refresh tokens at rest (AES-256-GCM).
+    # Without it no account can be connected. Generate: python -c "import os,base64;
+    # print(base64.b64encode(os.urandom(32)).decode())"
+    integrations_token_key: str | None = None
+    # The public address of the web app: OAuth redirect URIs are
+    # {app_public_url}/api/v1/integrations/{provider}/callback (through the Next.js proxy).
+    app_public_url: str = "http://127.0.0.1:3000"
+    spotify_client_id: str | None = None
+    spotify_client_secret: str | None = None
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    # Daily YouTube Data API budget (default project quota 10,000 units; reset at midnight
+    # Pacific time). TASTIFY stops before an operation would exceed it.
+    youtube_daily_quota: int = 10_000
+
+    # Recommendation logs (Milestone 6) are personal data: kept this many days, then pruned
+    # (`python -m tastify_ml experiments prune`).
+    recommendation_log_retention_days: int = 90
+
+    def redirect_uri(self, provider: str) -> str:
+        base = self.app_public_url.rstrip("/")
+        return f"{base}{self.api_v1_prefix}/integrations/{provider}/callback"
+
 
 @lru_cache
 def get_settings() -> Settings:

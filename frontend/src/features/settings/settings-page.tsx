@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, Plug, ShieldCheck, Trash2, X } from "lucide-react";
+import { Download, ShieldCheck, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -12,18 +12,13 @@ import { PageContainer, PageHeading } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
 import { Dialog, DialogContent, Switch } from "@/components/ui/primitives";
-import {
-  EmptyState,
-  ErrorState,
-  Pill,
-  Skeleton,
-  Spinner,
-} from "@/components/ui/states";
+import { ErrorState, Pill, Skeleton, Spinner } from "@/components/ui/states";
 import { useMe, useUpdateAccount } from "@/features/auth/queries";
 import {
   ArtistPicker,
   FEATURED_GENRES,
 } from "@/features/onboarding/onboarding-flow";
+import { ConnectionsPanel } from "@/features/integrations/connections-panel";
 import { useGenres, useMoods } from "@/features/recommendations/queries";
 import {
   toUpdate,
@@ -674,15 +669,11 @@ export function SettingsPage() {
         <PreferencesCard preferences={preferences.data} />
       )}
       <Card
+        id="connections"
         title="Connected services"
-        description="Link a streaming account to import your history and play in TASTIFY."
+        description="Bring in your listening history and send playlists to other services."
       >
-        <EmptyState
-          icon={Plug}
-          title="Integrations are coming"
-          description="ListenBrainz, Spotify and YouTube connections are planned for the next milestone, subject to each service's API terms. Until then, TASTIFY learns from what you like, save and add to playlists here."
-          className="py-8"
-        />
+        <ConnectionsPanel />
       </Card>
       {preferences.data ? <PrivacyCard preferences={preferences.data} /> : null}
       <PasswordCard />

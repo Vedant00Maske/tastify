@@ -170,9 +170,9 @@ request; it is reported here. `strategy` is `personalized`, `cold_start` or `art
 | `POST /api/v1/auth/register` | Implemented (M4) | `{email, password, display_name?, accept_terms}`. Password 10–128 characters, no leading/trailing spaces, not the e-mail. `201` with the user and a session cookie; `409` if the e-mail is taken; `422` for a weak password or unaccepted terms; `429` after 10 registrations per client per hour. |
 | `POST /api/v1/auth/login` | Implemented (M4) | `{email, password}`; `200` with the user and a session cookie, `401` for any wrong combination (same message and timing for unknown e-mails). `429` after 10 attempts per account or 30 per client in 15 minutes (`Retry-After`). |
 | `POST /api/v1/auth/logout` | Implemented (M4) | Revokes the session and clears the cookie (`204`). |
-| `POST /api/v1/auth/password` | Implemented (M4) | `{current_password, new_password}`; `204`. Revokes every other session of the user. |
+| `POST /api/v1/auth/password` | Implemented (M4) | `{current_password, new_password}`; `204`. Revokes every other session of the user. A wrong current password is `403` (the session is valid; `401` always means signed out). |
 | `GET /api/v1/users/me`, `PATCH …` | Implemented (M4) | The signed-in user (`id`, `email`, `display_name`, `created_at`, `onboarding_completed`); PATCH sets `display_name` and/or `onboarding_completed`. |
-| `DELETE /api/v1/users/me` | Implemented (M4) | `{password}`; deletes the account and everything that belongs to it (events, profile, preferences, playlists, sessions). `204`. |
+| `DELETE /api/v1/users/me` | Implemented (M4) | `{password}`; deletes the account and everything that belongs to it (events, profile, preferences, playlists, sessions). `204`; `403` for a wrong password. |
 | `GET /api/v1/users/me/export` | Implemented (M4) | All of the user's data as a JSON attachment: account (without the password hash), preferences, interactions, taste profile, playlists with tracks, sessions (without token hashes). |
 | `GET /api/v1/users/me/preferences`, `PUT …` | Implemented (M4) | Declared preferences: `exploration_mode` (`familiar`, `balanced`, `explorer`, or null for automatic), `personalization_enabled`, favourite and excluded artists (ids) and genres (names), favourite moods (up to 8 mood keys). PUT replaces them and rebuilds the profile. 422 for unknown references or an artist/genre both preferred and excluded. |
 | `GET /api/v1/users/me/taste-profile?include_embeddings=` | Implemented (M4; M3 logic) | Genre and artist affinities (strongest first), negative artists, listening statistics, exploration preference and discovery target, profile and model versions; optionally the 128-d embeddings. |
@@ -192,7 +192,31 @@ request; it is reported here. `strategy` is `personalized`, `cold_start` or `art
 | `PUT /api/v1/playlists/{id}/tracks/order` | Implemented (M4) | `{track_ids}`: the new order; must be exactly the playlist's tracks. |
 | `POST /api/v1/playlists/{id}/regenerate` | Implemented (M4) | Generated playlists only: replace the tracks with a fresh set from the same generator, leaving out the current ones. |
 | `GET /api/v1/playlists/{id}/suggestions?limit=` | Implemented (M4) | Tracks that fit the playlist: nearest neighbours of its mean content embedding, re-ranked with popularity. |
-| All other endpoints above  | Planned     | `/recommendations/custom`, playlist export and integrations: later milestones (see ROADMAP.md). |
+| `GET /api/v1/integrations` | Implemented (M5) | Every provider (ListenBrainz, Spotify, YouTube, MusicBrainz): auth kind, capabilities, whether it is configured here, and the user's connection (status, account name, last import). Never tokens. |
+| `POST /api/v1/integrations/{provider}/connect` | Implemented (M5) | `{token}`: connect a token-based provider (ListenBrainz). `422` if the provider rejects the token, `503` if token encryption is not configured. |
+| `GET /api/v1/integrations/{provider}/authorize` | Implemented (M5) | `{url}`: the provider's sign-in page (OAuth with PKCE and a single-use `state`). |
+| `GET /api/v1/integrations/{provider}/callback` | Implemented (M5) | Where the provider sends the browser back; finishes connecting and redirects to `/settings?integration=…&status=connected\|cancelled\|error`. |
+| `DELETE /api/v1/integrations/{provider}?delete_imported=` | Implemented (M5) | Disconnect: revoke where the provider supports it, delete the tokens, optionally delete the history imported from it. `204`. |
+| `POST /api/v1/integrations/{provider}/import` | Implemented (M5) | `{consent: true}` required (`422` otherwise). Imports listening history or library data as events (`source` = provider), matched to the catalogue by MBID, ISRC or exact artist and title; incremental and idempotent. Returns the run's counts. |
+| `GET /api/v1/integrations/imports` | Implemented (M5) | The user's last 20 import runs. |
+| `GET /api/v1/integrations/musicbrainz/search?q=&limit=` | Implemented (M5) | Recordings on MusicBrainz (1 request per second app-wide), with `track_id` when the catalogue has them. |
+| `POST /api/v1/playlists/{id}/export` | Implemented (M5) | `{provider}`: create or update the playlist on a connected provider (private). Retry-safe; returns exported and unmatched counts and the remote URL. `409` not connected or reconnect needed, `429` rate limit or quota, `502` provider failure. |
+| `GET /api/v1/playlists/{id}/exports` | Implemented (M5) | The playlist's exports, one per provider. |
+| `POST /api/v1/recommendations/custom` | Implemented (M6) | `{prompt, limit?, exploration_level?, exclude_previously_heard?, exclude?}`: a playlist from a prompt (spec §9, FR-016). Returns the recommendations with evidence-based reasons, `interpretation` (genres, moods, artists, exclusions, tempo, energy, era, popularity, exploration, ignored words, summary) and `personalized`. Public; personalized and logged when signed in. `422` (`prompt_not_understood`, with the ignored words) when nothing matches the catalogue. |
+| All other endpoints above  | Planned     | Playlist export to file formats and further integrations: later milestones (see ROADMAP.md). |
+
+**Milestone 6 additions to existing endpoints.**
+
+- Every request may send `X-Timezone` (an IANA name such as `Europe/Berlin`); invalid values are
+  ignored. The web app sends the browser's zone.
+- `GET /recommendations/for-you` responses carry `context` (session evidence and the weights
+  applied) and, when the user is in a running experiment, `experiment` and `variant`. For-you,
+  hidden gems, surprise, signed-in mood mixes and prompt playlists are logged with their
+  `request_id` (`recommendation_requests`, `recommendation_logs`).
+- `POST /interactions` events accept an optional `request_id`: the response the feedback was
+  given on, used to measure experiments.
+- Playlist generators accept `{"collection": "custom", "prompt": ..., "exploration_level": ...}`.
+- `GET /users/me/export` includes `recommendations_shown` (the logged responses and their items).
 
 **Authentication.** Every `/users/me/…`, `/interactions…`, `/playlists…` and personalized
 recommendation route requires a session (`401` otherwise); catalogue, mood and non-personal

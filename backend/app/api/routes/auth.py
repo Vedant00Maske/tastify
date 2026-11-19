@@ -126,5 +126,11 @@ async def change_password(
         await AuthService(session).change_password(
             user, data.current_password, data.new_password, session_token(request)
         )
+    except InvalidCredentialsError as error:
+        # Signed in, but the confirmation failed: 403, not 401 (the session itself is valid,
+        # and clients treat 401 as "signed out").
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, detail="current password is wrong"
+        ) from error
     except AuthError as error:
         raise _http_error(error) from error

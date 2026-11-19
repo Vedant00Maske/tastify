@@ -61,6 +61,16 @@ interface Options<T> extends Omit<RequestInit, "body"> {
   schema?: z.ZodType<T>;
 }
 
+/** The viewer's IANA time zone, for context-aware recommendations (ADR-019). */
+function timezoneHeader(): Record<string, string> {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return zone ? { "X-Timezone": zone } : {};
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Typed JSON request to the TASTIFY API. Sends cookies (session auth), serializes JSON bodies,
  * validates the response with `schema` when given, and throws ApiError with the API's message.
@@ -75,6 +85,7 @@ export async function apiFetch<T>(
     credentials: "include",
     headers: {
       Accept: "application/json",
+      ...timezoneHeader(),
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
       ...headers,
     },

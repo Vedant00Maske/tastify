@@ -115,6 +115,25 @@ async def _run_personalize(args: argparse.Namespace) -> None:
             await personalization.stage_report()
 
 
+async def _run_context(args: argparse.Namespace) -> None:
+    from tastify_ml.pipelines.context import stage_context
+
+    await stage_context()
+
+
+async def _run_experiments(args: argparse.Namespace) -> None:
+    import json as _json
+
+    from tastify_ml.pipelines.experiments import run
+
+    result = await run(
+        args.action,
+        args.key,
+        {"surface": args.surface, "description": args.description, "variant": args.variant},
+    )
+    print(_json.dumps(result, indent=2, default=str))  # noqa: T201 - command output
+
+
 def run_async(
     func: Callable[[argparse.Namespace], Coroutine[Any, Any, None]],
 ) -> Callable[[argparse.Namespace], None]:
@@ -170,6 +189,26 @@ def build_parser() -> argparse.ArgumentParser:
         "stage", choices=("all", *PERSONALIZE_STAGES), help="stage to run, or 'all' in order"
     )
     p.set_defaults(func=run_async(_run_personalize))
+
+    p = commands.add_parser(
+        "context", help="time-of-day and session context experiment (Milestone 6)"
+    )
+    p.set_defaults(func=run_async(_run_context))
+
+    p = commands.add_parser(
+        "experiments", help="online experiments: create, start, stop, report, prune (Milestone 6)"
+    )
+    p.add_argument("action", choices=("create", "start", "stop", "report", "prune"))
+    p.add_argument("key", nargs="?", help="experiment key, e.g. context-ranking")
+    p.add_argument("--surface", default="for_you", help="where it runs (default for_you)")
+    p.add_argument("--description", help="what the experiment tests")
+    p.add_argument(
+        "--variant",
+        action="append",
+        help="name:weight:param=value,... (first variant is the control), e.g. "
+        '"control:0.5:session_weight=0"',
+    )
+    p.set_defaults(func=run_async(_run_experiments))
 
     return parser
 

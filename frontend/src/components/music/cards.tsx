@@ -94,7 +94,12 @@ export function TrackCard({
         </p>
       ) : null}
       <div className="mt-auto flex items-center justify-between">
-        <FeedbackButtons trackId={track.id} title={track.title} state={state} />
+        <FeedbackButtons
+          trackId={track.id}
+          title={track.title}
+          state={state}
+          requestId={track.requestId}
+        />
         <AddToPlaylist trackId={track.id} title={track.title} />
       </div>
     </motion.article>
@@ -132,7 +137,6 @@ export function TrackRow({
         <TrackArtwork
           src={track.artworkUrl}
           seed={track.id}
-          label={track.artist}
           alt=""
           sizes="48px"
           className="size-12 rounded-button-sm"
@@ -177,6 +181,7 @@ export function TrackRow({
             trackId={track.id}
             title={track.title}
             state={state}
+            requestId={track.requestId}
           />
         ) : null}
         {actions ?? <AddToPlaylist trackId={track.id} title={track.title} />}

@@ -66,7 +66,8 @@ async def delete_me(
     try:
         await AuthService(session).delete_account(user, data.password)
     except InvalidCredentialsError as error:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+        # Signed in, but the confirmation failed: 403, not 401 (clients treat 401 as signed out).
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="password is wrong") from error
     clear_session_cookie(response)
 
 

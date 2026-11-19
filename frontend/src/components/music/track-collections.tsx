@@ -43,6 +43,7 @@ export function TrackCards({
   const cards = tracks.map((track, i) => (
     <motion.div
       key={track.id}
+      role={layout === "grid" ? "listitem" : undefined}
       custom={i}
       variants={reveal}
       initial="hidden"

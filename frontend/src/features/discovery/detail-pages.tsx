@@ -125,7 +125,8 @@ function ArtistRadioSection({
 }) {
   const radio = useArtistRadio(artistId);
   const play = usePlayer((s) => s.play);
-  const tracks = radio.data?.recommendations.map(fromRecommendation) ?? [];
+  const tracks =
+    radio.data?.recommendations.map((item) => fromRecommendation(item)) ?? [];
   return (
     <Section
       title={`${name} radio`}
@@ -169,7 +170,8 @@ function SimilarArtistsSection({
   name: string;
 }) {
   const similar = useSimilarArtists(artistId);
-  const tracks = similar.data?.recommendations.map(fromRecommendation) ?? [];
+  const tracks =
+    similar.data?.recommendations.map((item) => fromRecommendation(item)) ?? [];
   if (similar.isPending) return <CardsSkeleton layout="carousel" />;
   if (!tracks.length) return null;
   return (
@@ -261,7 +263,8 @@ function SimilarTracksSection({
   title: string;
 }) {
   const similar = useSimilarTracks(trackId);
-  const tracks = similar.data?.recommendations.map(fromRecommendation) ?? [];
+  const tracks =
+    similar.data?.recommendations.map((item) => fromRecommendation(item)) ?? [];
   if (similar.isPending) {
     return (
       <Section title="Similar tracks">

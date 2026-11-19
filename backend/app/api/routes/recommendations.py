@@ -1,20 +1,32 @@
 """Recommendation endpoints (Milestones 2-4; API_SPEC.md)."""
 
+import time
 import uuid
 from typing import Annotated
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
 from app.domains.auth.dependencies import CurrentUser, optional_user
+from app.domains.recommendations import logging_service
+from app.domains.recommendations.custom import (
+    CustomIn,
+    CustomPlaylistService,
+    CustomResponse,
+    PromptNotUnderstoodError,
+)
 from app.domains.recommendations.moods import (
     MoodListResponse,
     MoodMixResponse,
     MoodService,
     describe_moods,
 )
-from app.domains.recommendations.personalized import PersonalizedRecommendationService
+from app.domains.recommendations.personalized import (
+    PersonalizedRecommendationService,
+    RequestContext,
+)
 from app.domains.recommendations.ranking import DEFAULT_MAX_PER_ARTIST
 from app.domains.recommendations.schemas import (
     BecauseYouListenedResponse,
@@ -44,6 +56,25 @@ def get_recommendation_service(
 
 
 Recommendations = Annotated[RecommendationService, Depends(get_recommendation_service)]
+
+
+def request_context(
+    x_timezone: Annotated[
+        str | None,
+        Header(max_length=64, description="The viewer's IANA time zone, e.g. Europe/Berlin"),
+    ] = None,
+) -> RequestContext:
+    """The viewer's time zone, when the browser sent a valid one."""
+    zone = None
+    if x_timezone:
+        try:
+            zone = ZoneInfo(x_timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            zone = None
+    return RequestContext(zone=zone)
+
+
+Context = Annotated[RequestContext, Depends(request_context)]
 
 
 def _http_error(error: RecommendationError) -> HTTPException:
@@ -129,6 +160,7 @@ async def artist_radio(
 async def for_you(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     user: CurrentUser,
+    context: Context,
     limit: Limit = 25,
     exploration: Annotated[
         ExplorationMode | None,
@@ -136,32 +168,62 @@ async def for_you(
     ] = None,
 ) -> PersonalizedResponse:
     """The personal mix: hybrid ranking over every candidate source, diversified, balancing
-    familiar artists and discoveries (familiar 80/20, balanced 50/50, explorer 20/80)."""
+    familiar artists and discoveries (familiar 80/20, balanced 50/50, explorer 20/80), nudged by
+    the current session. Logged, and assigned to the running for-you experiment if any."""
+    started = time.perf_counter()
+    assignment = await logging_service.assignment_for(session, "for_you", user.id)
     try:
         response = await PersonalizedRecommendationService(session).for_you(
-            user.id, limit, exploration
+            user.id,
+            limit,
+            exploration,
+            request_context=context,
+            params=assignment.params if assignment else None,
         )
         await session.commit()
-        return response
     except RecommendationError as error:
         raise _http_error(error) from error
+    if assignment:
+        response = response.model_copy(
+            update={"experiment": assignment.experiment, "variant": assignment.variant}
+        )
+    await logging_service.record(
+        session,
+        response,
+        user_id=user.id,
+        category="for_you",
+        assignment=assignment,
+        context=response.context,
+        latency_ms=round((time.perf_counter() - started) * 1000),
+    )
+    return response
 
 
 @router.get("/hidden-gems")
 async def hidden_gems(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     user: CurrentUser,
+    context: Context,
     limit: Limit = 20,
 ) -> PersonalizedResponse:
     """Lesser-known tracks that match the user's taste, mostly by artists new to them."""
+    started = time.perf_counter()
     try:
         response = await PersonalizedRecommendationService(session).for_you(
-            user.id, limit, collection="hidden_gems"
+            user.id, limit, collection="hidden_gems", request_context=context
         )
         await session.commit()
-        return response
     except RecommendationError as error:
         raise _http_error(error) from error
+    await logging_service.record(
+        session,
+        response,
+        user_id=user.id,
+        category="hidden_gems",
+        context=response.context,
+        latency_ms=round((time.perf_counter() - started) * 1000),
+    )
+    return response
 
 
 @router.get("/surprise")
@@ -172,9 +234,10 @@ async def surprise(
     try:
         response = await PersonalizedRecommendationService(session).surprise(user.id)
         await session.commit()
-        return response
     except RecommendationError as error:
         raise _http_error(error) from error
+    await logging_service.record(session, response, user_id=user.id, category="surprise")
+    return response
 
 
 @router.get("/because-you-listened")
@@ -192,6 +255,42 @@ async def because_you_listened(
         return BecauseYouListenedResponse(sections=sections)
     except RecommendationError as error:
         raise _http_error(error) from error
+
+
+@router.post("/custom")
+async def custom_playlist(
+    data: CustomIn,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    user: Annotated[User | None, Depends(optional_user)],
+) -> CustomResponse:
+    """A playlist from a prompt (spec §9, FR-016): the prompt is read into genres, moods,
+    artists and constraints (returned as `interpretation`), and tracks are ranked on catalogue
+    evidence; personalized when signed in. 422 when nothing in the prompt matches the
+    catalogue."""
+    started = time.perf_counter()
+    try:
+        response = await CustomPlaylistService(session).generate(data, user.id if user else None)
+    except PromptNotUnderstoodError as error:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "message": str(error),
+                "code": "prompt_not_understood",
+                "ignored": error.ignored,
+            },
+        ) from error
+    except RecommendationError as error:
+        raise _http_error(error) from error
+    if user is not None:
+        await logging_service.record(
+            session,
+            response,
+            user_id=user.id,
+            category="custom",
+            context={"prompt": data.prompt[:300], "summary": response.interpretation.summary},
+            latency_ms=round((time.perf_counter() - started) * 1000),
+        )
+    return response
 
 
 @router.get("/moods")
@@ -213,6 +312,9 @@ async def mood_mix(
 ) -> MoodMixResponse:
     """A mood mix, personalized when signed in; `exclude` gives a fresh mix on regenerate."""
     try:
-        return await MoodService(session).mix(mood, limit, user.id if user else None, exclude)
+        response = await MoodService(session).mix(mood, limit, user.id if user else None, exclude)
     except RecommendationError as error:
         raise _http_error(error) from error
+    if user is not None:
+        await logging_service.record(session, response, user_id=user.id, category="mood")
+    return response

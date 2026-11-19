@@ -7,6 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.domains.auth.dependencies import SESSION_COOKIE
 from app.domains.auth.service import hash_token
 from app.domains.users.models import UserSession
@@ -130,9 +131,9 @@ async def test_state_changes_from_foreign_origins_are_rejected(
         "/api/v1/auth/register", json=account(), headers={"Origin": "https://evil.example"}
     )
     assert foreign.status_code == 403
-    allowed = await client.post(
-        "/api/v1/auth/register", json=account(), headers={"Origin": "http://localhost:3000"}
-    )
+    # Whatever the developer's .env allows: the check must follow the configuration.
+    origin = get_settings().cors_origins[0]
+    allowed = await client.post("/api/v1/auth/register", json=account(), headers={"Origin": origin})
     assert allowed.status_code == 201
 
 
@@ -148,7 +149,7 @@ async def test_password_change_signs_out_other_sessions(
             "/api/v1/auth/password",
             json={"current_password": "nope nope nope", "new_password": "another long pass"},
         )
-        assert wrong.status_code == 401
+        assert wrong.status_code == 403
         changed = await client.post(
             "/api/v1/auth/password",
             json={"current_password": PASSWORD, "new_password": "another long pass"},
@@ -183,10 +184,37 @@ async def test_account_deletion_removes_everything(
     refused = await client.request(
         "DELETE", "/api/v1/users/me", json={"password": "wrong password!"}
     )
-    assert refused.status_code == 401
+    assert refused.status_code == 403
     deleted = await client.request("DELETE", "/api/v1/users/me", json={"password": PASSWORD})
     assert deleted.status_code == 204
     assert (await client.get("/api/v1/users/me")).status_code == 401
     for table in ("users", "user_sessions"):
         count = await session.scalar(text(f"SELECT count(*) FROM {table}"))  # noqa: S608
         assert count == 0
+
+
+async def test_sessions_expire_and_slide_while_in_use(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    await client.post("/api/v1/auth/register", json=account())
+
+    # In use after the refresh interval: the expiry moves 30 days ahead of now.
+    await session.execute(
+        text(
+            "UPDATE user_sessions SET last_seen_at = now() - interval '2 hours',"
+            " expires_at = now() + interval '1 day'"
+        )
+    )
+    await session.commit()
+    assert (await client.get("/api/v1/users/me")).status_code == 200
+    remaining = await session.scalar(
+        text("SELECT extract(epoch FROM expires_at - now()) / 86400 FROM user_sessions")
+    )
+    assert remaining is not None
+    assert 29 < float(remaining) <= 30
+
+    # Past its expiry, the session no longer authenticates.
+    # A day in the past: the API checks with the host clock, PostgreSQL may run seconds apart.
+    await session.execute(text("UPDATE user_sessions SET expires_at = now() - interval '1 day'"))
+    await session.commit()
+    assert (await client.get("/api/v1/users/me")).status_code == 401

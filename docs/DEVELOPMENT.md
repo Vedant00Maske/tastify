@@ -84,6 +84,24 @@ python -m tastify_ml catalogue all         # build the catalogue; see docs/ML_PI
 `.env` must contain `LISTENS_PSEUDONYM_KEY` (a long random secret) before the `listens` stage runs.
 Downloads and processed data live on the drive holding the repository.
 
+### Music service integrations (optional)
+
+`.env` needs `INTEGRATIONS_TOKEN_KEY` (32 random bytes, base64; see `.env.example`) before any
+account can be connected. ListenBrainz and MusicBrainz then work without further setup: users
+paste their own ListenBrainz token in Settings → Connected services.
+
+- **Spotify:** create an app in the Spotify developer dashboard (the owner needs Premium in
+  Development Mode), add the redirect URI `http://127.0.0.1:3000/api/v1/integrations/spotify/callback`,
+  add the Spotify accounts that may connect to the app's allow-list (at most five), and set
+  `SPOTIFY_CLIENT_ID`.
+- **YouTube:** in Google Cloud, enable the YouTube Data API v3, create an OAuth client of type
+  "Web application" with the redirect URI
+  `http://127.0.0.1:3000/api/v1/integrations/youtube/callback`, add yourself as a test user on the
+  consent screen, and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+Redirect URIs follow `APP_PUBLIC_URL` (default `http://127.0.0.1:3000`), so open the app on that
+address. Restart the backend after changing `.env`.
+
 ## Everyday commands
 
 | Task                         | Backend (`backend/`)                          | Frontend (`frontend/`)   |

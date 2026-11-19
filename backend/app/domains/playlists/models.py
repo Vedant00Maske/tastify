@@ -18,7 +18,7 @@ from app.core.database import Base
 from app.domains.catalogue.models import created_at_column, updated_at_column, uuid_pk
 
 PLAYLIST_KINDS = ("manual", "generated")
-COLLECTIONS = ("for_you", "mood", "hidden_gems", "genre", "artist_radio")
+COLLECTIONS = ("for_you", "mood", "hidden_gems", "genre", "artist_radio", "custom")
 MAX_TRACKS = 500
 MAX_PLAYLISTS = 200
 

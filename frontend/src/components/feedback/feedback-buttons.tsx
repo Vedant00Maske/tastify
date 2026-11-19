@@ -68,10 +68,13 @@ export function FeedbackButtons({
   trackId,
   title,
   state,
+  requestId,
 }: {
   trackId: string;
   title: string;
   state: FeedbackState;
+  /** The recommendation response the track came from (experiment attribution). */
+  requestId?: string;
 }) {
   const feedback = useFeedback();
   const send = (
@@ -79,7 +82,7 @@ export function FeedbackButtons({
     message?: string,
   ) =>
     feedback.mutate(
-      { trackId, eventType },
+      { trackId, eventType, requestId },
       {
         onSuccess: () => {
           if (message) toast(message);

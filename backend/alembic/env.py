@@ -14,7 +14,9 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import get_settings
 from app.core.database import Base
 from app.domains.catalogue import models as _catalogue_models  # noqa: F401
+from app.domains.integrations import models as _integration_models  # noqa: F401
 from app.domains.playlists import models as _playlist_models  # noqa: F401
+from app.domains.recommendations import logging_models as _recommendation_logs  # noqa: F401
 from app.domains.recommendations import models as _recommendation_models  # noqa: F401
 from app.domains.users import models as _user_models  # noqa: F401
 

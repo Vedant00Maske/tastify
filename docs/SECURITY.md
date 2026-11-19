@@ -88,6 +88,19 @@ Design: [ADR-017](ADR/ADR-017-authentication-and-user-application.md).
   application database; only item-level aggregates derived from them are published (DATA_SOURCES.md).
 - **Idempotent ingestion.** `client_event_id` deduplicates retried batches; the batch size is capped
   at 500 events and event types are validated against an allow-list (database CHECK constraint).
+- **Connected services (Milestone 5, ADR-018).** Provider access and refresh tokens are
+  encrypted at rest with AES-256-GCM (`INTEGRATIONS_TOKEN_KEY`, kept out of the repository),
+  bound to their user and provider, and never returned by any API or included in the data
+  export. OAuth uses PKCE and a random, single-use `state` tied to the signed-in user (Redis, 10
+  minutes). Scopes are the minimum each feature needs. Importing listening history requires
+  explicit consent each time; disconnecting deletes the tokens (Google grants are also revoked)
+  and can delete everything imported. Exported playlists are created private.
+- **Recommendation logs (Milestone 6, ADR-019).** What was recommended to whom is personal data:
+  it is included in the data export, deleted with the account, and pruned after
+  `RECOMMENDATION_LOG_RETENTION_DAYS` (90 by default; `python -m tastify_ml experiments prune`).
+  Experiment assignment is computed from a hash and stores nothing extra. Prompts are kept only
+  in these logs. The browser's time zone is sent with requests to support context features; it
+  is not stored on its own.
 - **Third-party requests.** Artwork is loaded from the Cover Art Archive through the Next.js image
   optimizer (the user's browser does not contact it directly); the player's "listen on" links
   open YouTube or MusicBrainz searches only when the user clicks them.

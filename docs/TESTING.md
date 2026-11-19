@@ -170,7 +170,31 @@ Tooling set up in Milestone 0:
   (sign-in redirect, register and onboarding, dashboard feedback and the player, discovery and
   moods, playlists, taste, search, logout) against an in-memory API (`e2e/support/mock-api.ts`)
   that intercepts `/api/v1` in the browser, so they need no backend; a journey fails if the app
-  calls an endpoint the mock does not know.
+  calls an endpoint the mock does not know. `e2e/accessibility.spec.ts` runs axe-core (WCAG 2.1
+  A and AA) on every page at 1440 and 390 px; `e2e/layout.spec.ts` fails if any page scrolls
+  sideways at 360, 768, 1024 or 1920 px and keeps screenshots in `test-results/`. Session expiry
+  and the sliding refresh are covered in `test_auth_api.py`.
+- Milestone 6. `backend/tests/unit/test_milestone6_logic.py`: prompt reading (genres, moods,
+  artists, exclusions, tempo, era, popularity), stable weighted assignment, Wilson intervals,
+  the two-proportion test and verdicts, session and daypart fits.
+  `backend/tests/integration/users/test_milestone6_api.py`: prompt playlists by genre and by
+  artist with exclusions, the `422` for unmatched prompts, personalization and logging, saving
+  and regenerating prompt playlists, for-you logging with attributed feedback, an experiment from
+  assignment to report, the session nudge. `ml/tests/test_context_experiment.py` checks that the
+  offline context model equals the API's (dayparts, shrinkage, session windows, offset
+  inference). The E2E journey creates, regenerates and saves a prompt playlist; `/create` is in
+  the accessibility and layout checks.
+- Integration tests (Milestone 5). `backend/tests/integration/integrations/fakes.py` implements
+  in-memory ListenBrainz, Spotify, YouTube and MusicBrainz servers (httpx `MockTransport`) that
+  follow the providers' documented shapes, record calls and can fail on demand.
+  `test_integrations_api.py` covers token validation and encryption at rest, consent, matching
+  by MBID, ISRC and key, incremental re-import, OAuth with PKCE and single-use state, token
+  refresh and `reauth_required`, retry-safe exports (failure after creation, lost remote id),
+  Spotify ISRC matching with the id cache, the YouTube quota refusing before any call, ownership,
+  failure isolation and disconnecting with deletion of imported history.
+  `tests/unit/test_integrations_logic.py` covers the cipher, PKCE, idempotency keys, listen
+  parsing, quota estimates and query escaping. The E2E journeys connect ListenBrainz, import,
+  export a playlist and use the MusicBrainz fallback.
 
 - `backend/tests/unit/` is fast, with no network. External dependencies are replaced with fakes
   through `app.dependency_overrides`.

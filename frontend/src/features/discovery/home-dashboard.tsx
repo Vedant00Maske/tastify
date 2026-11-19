@@ -52,7 +52,9 @@ function Hero() {
       />
     );
   }
-  const tracks = forYou.data.recommendations.map(fromRecommendation);
+  const tracks = forYou.data.recommendations.map((item) =>
+    fromRecommendation(item, forYou.data.request_id),
+  );
   if (!tracks.length) {
     return (
       <EmptyState
@@ -178,7 +180,7 @@ function BecauseYouListened() {
       <TrackCards
         layout="carousel"
         label={`Because you listened to ${section.seed.title}`}
-        tracks={section.recommendations.map(fromRecommendation)}
+        tracks={section.recommendations.map((item) => fromRecommendation(item))}
       />
     </Section>
   ));
@@ -193,7 +195,10 @@ function HiddenGems() {
       </Section>
     );
   }
-  const tracks = gems.data?.recommendations.map(fromRecommendation) ?? [];
+  const tracks =
+    gems.data?.recommendations.map((item) =>
+      fromRecommendation(item, gems.data.request_id),
+    ) ?? [];
   if (!tracks.length) return null;
   return (
     <Section
@@ -221,7 +226,8 @@ function SimilarToArtist({
   name: string;
 }) {
   const similar = useSimilarArtists(artistId);
-  const tracks = similar.data?.recommendations.map(fromRecommendation) ?? [];
+  const tracks =
+    similar.data?.recommendations.map((item) => fromRecommendation(item)) ?? [];
   if (!tracks.length) return null;
   return (
     <Section

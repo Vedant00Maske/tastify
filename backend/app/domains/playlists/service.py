@@ -29,6 +29,7 @@ from app.domains.playlists.schemas import (
     PlaylistUpdate,
 )
 from app.domains.recommendations import explanations
+from app.domains.recommendations.custom import CustomIn, CustomPlaylistService
 from app.domains.recommendations.moods import MoodService
 from app.domains.recommendations.personalized import EF_SEARCH, PersonalizedRecommendationService
 from app.domains.recommendations.ranking import CANDIDATE_POOL, Candidate, rerank
@@ -192,6 +193,17 @@ class PlaylistService:
             radio = await personalized.artist_radio(generator.artist_id, size * 2)
             items = [i.track_id for i in radio.recommendations if i.track_id not in exclude]
             return items[:size]
+        if generator.collection == "custom" and generator.prompt is not None:
+            custom = await CustomPlaylistService(self.session).generate(
+                CustomIn(
+                    prompt=generator.prompt,
+                    limit=min(size, 50),
+                    exploration_level=generator.exploration_level,
+                ),
+                user_id,
+                exclude,
+            )
+            return [i.track_id for i in custom.recommendations]
         raise PlaylistRuleError("incomplete generator")
 
     # --- operations ----------------------------------------------------------------------------

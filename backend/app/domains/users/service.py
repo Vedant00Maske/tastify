@@ -364,6 +364,7 @@ class UserService:
                     "session_id": event.session_id,
                     "source": batch.source,
                     "client_event_id": event.client_event_id,
+                    "request_id": event.request_id,
                 }
             )
         inserted = await self.users.insert_events(rows)

@@ -5,6 +5,8 @@ alembic==1.20.1
 argon2-cffi==25.1.0
 asyncpg==0.32.0
 celery[redis]==5.7.0
+# Encryption of provider tokens at rest (Milestone 5).
+cryptography==50.0.2
 fastapi==0.163.1
 httpx==0.28.1
 # Personalized serving: ALS fold-in, tree-ensemble ranking and MMR (Milestone 3).

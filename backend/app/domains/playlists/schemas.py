@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.domains.catalogue.schemas import TrackSummary
 from app.domains.playlists.models import MAX_TRACKS
 
-Collection = Literal["for_you", "mood", "hidden_gems", "genre", "artist_radio"]
+Collection = Literal["for_you", "mood", "hidden_gems", "genre", "artist_radio", "custom"]
 
 
 class Generator(BaseModel):
@@ -19,13 +19,22 @@ class Generator(BaseModel):
     mood: str | None = Field(default=None, max_length=64)
     genre: str | None = Field(default=None, max_length=100)
     artist_id: uuid.UUID | None = None
+    prompt: str | None = Field(default=None, min_length=2, max_length=300)
+    exploration_level: float | None = Field(default=None, ge=0, le=1)
     size: int = Field(default=25, ge=5, le=100)
 
     @model_validator(mode="after")
     def _complete(self) -> "Generator":
-        required = {"mood": self.mood, "genre": self.genre, "artist_radio": self.artist_id}
+        required = {
+            "mood": self.mood,
+            "genre": self.genre,
+            "artist_radio": self.artist_id,
+            "custom": self.prompt,
+        }
         if self.collection in required and required[self.collection] is None:
-            field = "artist_id" if self.collection == "artist_radio" else self.collection
+            field = {"artist_radio": "artist_id", "custom": "prompt"}.get(
+                self.collection, self.collection
+            )
             raise ValueError(f"{self.collection} playlists need `{field}`")
         return self
 

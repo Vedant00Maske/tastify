@@ -10,6 +10,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   UserRound,
+  Wand2,
   Waves,
 } from "lucide-react";
 import Link from "next/link";
@@ -40,6 +41,7 @@ export const MAIN_NAV: NavItem[] = [
   { href: "/discover", label: "Discover", icon: Compass },
   { href: "/moods", label: "Mood Mix", icon: Waves },
   { href: "/search", label: "Search", icon: Search },
+  { href: "/create", label: "Create", icon: Wand2 },
 ];
 
 export const LIBRARY_NAV: NavItem[] = [

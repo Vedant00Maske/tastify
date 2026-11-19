@@ -288,6 +288,36 @@ erDiagram
 The migration refuses to run while `users` has rows (the new account columns are required and
 Milestone 3 users had no credentials); downgrade removes the tables and columns again.
 
+## Implemented integrations schema (Milestone 5)
+
+ORM models: `backend/app/domains/integrations/models.py`. Migration: `04f15fd99085`. Design:
+ADR-018.
+
+| Table | Purpose and key rules |
+| --- | --- |
+| `provider_connections` | One per (user, provider) (`listenbrainz`, `spotify`, `youtube`; CHECK). Provider account id and name, granted scopes, access and refresh tokens **encrypted** (AES-256-GCM, `v1:` prefix, bound to user and provider), expiry, `status` (`active`, `reauth_required`), the import cursor and the last error. Deleted with the user. |
+| `provider_imports` | One row per import run: status (`running`, `completed`, `failed`), fetched, matched, imported and duplicate counts, error, start and finish. Indexed by (user, started_at). |
+| `playlist_exports` | Unique (playlist, provider): the remote playlist id and URL (saved before items are written), status, exported and unmatched counts, attempts, error. Deleted with the playlist. |
+| `provider_track_ids` | Primary key (provider, track): a provider's id for a catalogue track found by searching (Spotify by ISRC, YouTube by artist and title), or NULL for "not found"; re-checked after 30 days. Not personal data. |
+
+Imported history lives in `user_interactions` like any other event, with `source` set to the
+provider and a `client_event_id` derived from the provider's item, so imports are idempotent.
+
+## Implemented logging and experiments schema (Milestone 6)
+
+ORM models: `backend/app/domains/recommendations/logging_models.py`. Migration: `810f8e91b18b`.
+Design: ADR-019.
+
+| Table | Purpose and key rules |
+| --- | --- |
+| `recommendation_requests` | One row per logged response; the primary key is the response's `request_id`. User (CASCADE), category (`for_you`, `hidden_gems`, `surprise`, `mood`, `custom`), strategy, model versions (JSONB), experiment key and variant, context (JSONB: session evidence, weights, or the prompt and its interpretation), item count, latency. Indexed by (user, created_at) and (experiment, variant). Pruned after `RECOMMENDATION_LOG_RETENTION_DAYS` (default 90). |
+| `recommendation_logs` | Spec §6.2 RecommendationLog: one row per recommended track (request CASCADE, user, track, position, category, ranking score, model version). Indexed by (user, created_at) and request. |
+| `experiments` | Key, description, surface, status (`draft`, `running`, `stopped`; CHECK), weighted variants with parameters (JSONB), start and stop times. Assignment is computed (hash of experiment and user), not stored. |
+| `user_interactions.request_id` | Optional: the response feedback was given on (indexed). No foreign key, because logs are pruned and events are not. |
+
+`playlists.collection` also allows `custom` (playlists generated from a prompt; the generator
+keeps the prompt and exploration level).
+
 ## Migrations workflow
 
 Implemented in Milestone 0. Alembic runs on the async SQLAlchemy engine. The configuration lives in
@@ -325,6 +355,8 @@ linted and formatted with ruff automatically when generated.
 | `6ec567b027d8` | Recommendation models (Milestone 2): model registry, track popularity, track and artist embeddings with HNSW indexes. |
 | `a28199fd7847` | Users and hybrid models (Milestone 3): users, preferences, immutable interactions, taste profiles, collaborative factors (HNSW inner product) and neighbours, model artifacts; `model_type` allows `collaborative` and `hybrid`. Downgrade deletes those versions first. |
 | `013841aab22d` | Accounts and playlists (Milestone 4): account columns on `users`, `user_sessions`, `playlists`, `playlist_tracks`, `user_preferences.preferred_moods`. Refuses to run while users exist. |
+| `04f15fd99085` | Provider integrations (Milestone 5): `provider_connections` (encrypted tokens), `provider_imports`, `playlist_exports`, `provider_track_ids`. |
+| `810f8e91b18b` | Logging and experiments (Milestone 6): `recommendation_requests`, `recommendation_logs`, `experiments`, `user_interactions.request_id`, the `custom` playlist collection. Downgrade turns prompt playlists into manual ones. |
 
 ### Databases
 

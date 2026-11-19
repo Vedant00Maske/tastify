@@ -49,7 +49,7 @@ function useDiscoveryOnly(
     () =>
       (items ?? [])
         .filter((item) => !discoveriesOnly || item.discovery)
-        .map(fromRecommendation),
+        .map((item) => fromRecommendation(item)),
     [items, discoveriesOnly],
   );
 }
@@ -96,7 +96,7 @@ function SurpriseResult() {
         <div className="rounded-card bg-background/40 p-1">
           <TrackRows
             label="Your surprise"
-            tracks={[fromRecommendation(pick)]}
+            tracks={[fromRecommendation(pick, surprise.data?.request_id)]}
             showReason
           />
         </div>

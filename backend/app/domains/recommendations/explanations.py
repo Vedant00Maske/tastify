@@ -111,6 +111,33 @@ def hidden_gem_reason(base: str, listeners: int) -> str:
     return f"{base}. A hidden gem: {listeners:,} listeners in the last 14 days"
 
 
+def custom_reason(
+    *,
+    genre: str | None,
+    genre_fit: float,
+    artist: str | None,
+    artist_fit: float,
+    year: int | None,
+    new_artist: bool,
+    taste: float | None,
+) -> str:
+    """A prompt playlist's reason: the evidence that put the track there, strongest first."""
+    parts: list[str] = []
+    if artist and artist_fit >= 0.999:
+        parts.append(f"By {artist}, as you asked")
+    elif artist and artist_fit > 0:
+        parts.append(f"Close to {artist} (artist similarity {artist_fit:.2f})")
+    if genre and genre_fit > 0:
+        parts.append(f"{genre} (fit {genre_fit:.2f})")
+    if year:
+        parts.append(f"from {year}")
+    if new_artist:
+        parts.append("a new artist for you")
+    if taste is not None and taste > 0:
+        parts.append(f"close to your taste ({taste:.2f})")
+    return "; ".join(parts) if parts else "Matches your prompt"
+
+
 def surprise_reason(base: str) -> str:
     return f"Something new for you. {base}"
 

@@ -10,6 +10,7 @@ import { MotionConfig } from "motion/react";
 import { useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
+import { OfflineBanner } from "@/components/feedback/offline-banner";
 import { hardNavigate, isLeaving } from "@/lib/navigation";
 import { ApiError } from "@/services/api-client";
 
@@ -43,7 +44,10 @@ export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(makeClient);
   return (
     <QueryClientProvider client={client}>
-      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+      <MotionConfig reducedMotion="user">
+        {children}
+        <OfflineBanner />
+      </MotionConfig>
       <Toaster
         theme="dark"
         position="bottom-center"

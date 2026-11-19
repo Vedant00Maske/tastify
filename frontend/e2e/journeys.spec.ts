@@ -288,3 +288,209 @@ test("log out ends the session", async ({ page, api }) => {
   await page.waitForLoadState("networkidle");
   await expect(page).toHaveURL(/\/login\?next=%2Fhome$/);
 });
+
+test("reorder a playlist with the keyboard", async ({ page, api }) => {
+  await api.signIn();
+  const id = api.createPlaylist(
+    "Order",
+    TRACKS.slice(0, 3).map((t) => t.id),
+  );
+  await page.goto(`/playlists/${id}`);
+  await page.waitForLoadState("networkidle");
+
+  const handle = page.getByRole("button", {
+    name: new RegExp(`^Move ${TRACKS[0].title}\.`),
+  });
+  await handle.focus();
+  // dnd-kit measures between steps: give each key a moment, as a person would.
+  await page.keyboard.press("Space");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("ArrowDown");
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Space");
+
+  await expect
+    .poll(() => api.playlists.get(id)?.trackIds)
+    .toEqual([TRACKS[1].id, TRACKS[0].id, TRACKS[2].id]);
+  const rows = page
+    .getByRole("list", { name: "Tracks in Order" })
+    .getByRole("listitem");
+  await expect(rows.first()).toContainText(TRACKS[1].title);
+});
+
+test("change music preferences in settings", async ({ page, api }) => {
+  await api.signIn();
+  await page.goto("/settings");
+  await page.waitForLoadState("networkidle");
+
+  const moods = page.getByRole("group", { name: "Favourite moods" });
+  await moods.getByRole("button", { name: "Deep Focus" }).click();
+  await expect
+    .poll(() => api.preferences.preferred_moods)
+    .toEqual(["deep-focus"]);
+  await expect(
+    moods.getByRole("button", { name: "Deep Focus" }),
+  ).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: /Let TASTIFY learn it/ }).click();
+  await expect.poll(() => api.preferences.exploration_mode).toBeNull();
+
+  await page
+    .getByRole("switch", { name: "Personalized recommendations" })
+    .click();
+  await expect.poll(() => api.preferences.personalization_enabled).toBe(false);
+});
+
+test("delete the account after confirming the password", async ({
+  page,
+  api,
+}) => {
+  await api.signIn();
+  await page.goto("/settings");
+  await page.waitForLoadState("networkidle");
+
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  const dialog = page.getByRole("dialog", { name: "Delete your account?" });
+  await dialog.getByLabel("Confirm with your password").fill("not my password");
+  await dialog.getByRole("button", { name: "Delete forever" }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("password is wrong");
+  expect(api.deleted).toBe(false);
+
+  await dialog.getByLabel("Confirm with your password").fill(api.password);
+  await dialog.getByRole("button", { name: "Delete forever" }).click();
+  await expect(page).toHaveURL(/\/register$/);
+  expect(api.deleted).toBe(true);
+});
+
+test("going offline is announced and feedback is sent on reconnect", async ({
+  page,
+  context,
+  api,
+}) => {
+  await api.signIn();
+  await page.goto("/home");
+  await page.waitForLoadState("networkidle");
+
+  await context.setOffline(true);
+  await expect(page.getByText("You are offline.")).toBeVisible();
+  const grid = page.getByRole("list", { name: "Recommended for you" });
+  await grid
+    .getByRole("button", { name: `Save ${TRACKS[0].title}`, exact: true })
+    .click();
+  expect(api.events).toEqual([]);
+
+  await context.setOffline(false);
+  await expect(page.getByText("You are offline.")).toBeHidden();
+  await expect
+    .poll(() => api.events.map((e) => e.event_type))
+    .toEqual(["save"]);
+});
+
+test("connect ListenBrainz, import history and export a playlist", async ({
+  page,
+  api,
+}) => {
+  await api.signIn();
+  const id = api.createPlaylist(
+    "Export me",
+    TRACKS.slice(0, 2).map((t) => t.id),
+  );
+  await page.goto("/settings");
+  await page.waitForLoadState("networkidle");
+
+  const services = page.getByRole("list", { name: "Music services" });
+  await services.getByLabel("ListenBrainz user token").fill("wrong-token-123");
+  await services.getByRole("button", { name: "Connect" }).click();
+  await expect(
+    services.getByText("ListenBrainz did not accept this token"),
+  ).toBeVisible();
+
+  await services
+    .getByLabel("ListenBrainz user token")
+    .fill(api.listenbrainzToken);
+  await services.getByRole("button", { name: "Connect" }).click();
+  await expect(services.getByText("Connected", { exact: true })).toBeVisible();
+
+  await services
+    .getByRole("button", { name: "Import listening history" })
+    .click();
+  const consent = page.getByRole("dialog", {
+    name: "Import from ListenBrainz?",
+  });
+  await consent.getByRole("button", { name: "I agree, import" }).click();
+  await expect(
+    services.getByText(/2 new, 1 not in the catalogue/),
+  ).toBeVisible();
+  expect(api.events.map((e) => e.event_type)).toEqual(["play", "play"]);
+
+  await page.goto(`/playlists/${id}`);
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Export" }).click();
+  await page.getByRole("menuitem", { name: "ListenBrainz" }).click();
+  const exports = page.getByRole("list", { name: "Exports" });
+  await expect(exports).toContainText("2 tracks");
+  await expect(exports.getByRole("link", { name: /Open/ })).toHaveAttribute(
+    "href",
+    /listenbrainz\.org\/playlist\//,
+  );
+});
+
+test("search falls back to MusicBrainz on request", async ({ page, api }) => {
+  await api.signIn();
+  await page.goto("/search?q=someone");
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Search MusicBrainz" }).click();
+  const results = page.getByRole("list", { name: "MusicBrainz recordings" });
+  await expect(results).toContainText("Not Yet Here");
+  await expect(
+    results.getByRole("link", { name: /MusicBrainz/ }),
+  ).toHaveAttribute("href", /musicbrainz\.org\/recording\//);
+});
+
+test("create a playlist from a prompt, regenerate it and save it", async ({
+  page,
+  api,
+}) => {
+  await api.signIn();
+  await page.goto("/create");
+  await page.waitForLoadState("networkidle");
+
+  const prompt = page.getByLabel("Describe your playlist");
+  await prompt.fill("glorbic noise");
+  await page.getByRole("button", { name: "Create playlist" }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Not recognised" }),
+  ).toContainText("Not recognised: glorbic");
+
+  await page
+    .getByRole("button", { name: "Something like Radiohead but more upbeat" })
+    .click();
+  await expect(prompt).toHaveValue("Something like Radiohead but more upbeat");
+  await page.getByRole("button", { name: "New to me" }).click();
+  await page.getByRole("button", { name: "Create playlist" }).click();
+
+  const understood = page.getByRole("region", {
+    name: "What TASTIFY understood",
+  });
+  await expect(understood).toContainText("alternative rock");
+  await expect(
+    understood.getByRole("link", { name: "like Radiohead" }),
+  ).toBeVisible();
+  await expect(understood).toContainText("no metal");
+  await expect(understood).toContainText("Not used: vibes");
+  const list = page.getByRole("list", { name: /Playlist for/ });
+  await expect(list).toContainText(TRACKS[0].title);
+  expect(api.customPrompts[0]).toMatchObject({
+    exploration_level: 0.8,
+    exclude_previously_heard: true,
+  });
+
+  await page.getByRole("button", { name: "Regenerate" }).click();
+  await expect(list).not.toContainText(TRACKS[0].title);
+  expect((api.customPrompts[1].exclude as string[]).length).toBe(3);
+
+  await page.getByRole("button", { name: "Save as playlist" }).click();
+  await expect
+    .poll(() => [...api.playlists.values()].map((p) => p.collection))
+    .toEqual(["custom"]);
+});

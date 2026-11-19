@@ -26,6 +26,7 @@ import uuid
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime, timedelta, tzinfo
 from typing import Any
 
 import numpy as np
@@ -35,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domains.catalogue.models import Artist
 from app.domains.catalogue.repository import CatalogueRepository
 from app.domains.catalogue.schemas import TrackSummary
+from app.domains.recommendations import context as ctx
 from app.domains.recommendations import explanations
 from app.domains.recommendations.candidate_generation import (
     CandidateFilter,
@@ -118,6 +120,17 @@ HIDDEN_GEM_DISCOVERY = 0.8
 SURPRISE_POOL = 10
 
 
+SESSION_REASON_THRESHOLD = 0.03  # nudge (weight x fit) large enough to mention
+
+
+@dataclass(frozen=True)
+class RequestContext:
+    """Where and when the request happens: the viewer's time zone (from the browser) and now."""
+
+    zone: tzinfo | None = None
+    now: datetime | None = None
+
+
 @dataclass(frozen=True)
 class HybridSettings:
     """Serving settings of the active hybrid version (defaults when none is published)."""
@@ -184,6 +197,12 @@ class _ArtifactCache:
 
 
 ARTIFACTS = _ArtifactCache()
+# Popularity rankings per (popularity version, genre): not personal, and fixed for a published
+# version, so they are computed once per process (Milestone 6 optimization, ADR-019).
+POPULARITY_CACHE = _ArtifactCache(size=256)
+CONTEXT_POOL = 250  # only candidates this close to the top can be moved into the mix
+GENRE_CACHE_SIZE = 50_000
+_genre_cache: OrderedDict[tuple[uuid.UUID | None, uuid.UUID], dict[str, float]] = OrderedDict()
 
 
 @dataclass
@@ -221,6 +240,30 @@ class PersonalizedRecommendationService:
         self.profiles = TasteProfileService(session)
 
     # --- helpers -----------------------------------------------------------------------------
+
+    async def _genres(self, tracks: Sequence[uuid.UUID]) -> dict[uuid.UUID, dict[str, float]]:
+        """Track genre profiles, cached per content version (catalogue data that only changes
+        when the catalogue is rebuilt, which publishes a new content version)."""
+        content = await self.repository.active_version("content")
+        version = content.id if content is not None else None
+        found: dict[uuid.UUID, dict[str, float]] = {}
+        missing: list[uuid.UUID] = []
+        for track in tracks:
+            cached = _genre_cache.get((version, track))
+            if cached is None:
+                missing.append(track)
+            else:
+                _genre_cache.move_to_end((version, track))
+                found[track] = cached
+        if missing:
+            loaded = await self.repository.genre_profiles(missing)
+            for track in missing:
+                profile = loaded.get(track, {})
+                found[track] = profile
+                _genre_cache[(version, track)] = profile
+            while len(_genre_cache) > GENRE_CACHE_SIZE:
+                _genre_cache.popitem(last=False)
+        return found
 
     async def _isolated(
         self, source: Source, generate: Callable[[], Awaitable[CandidateList[uuid.UUID]]]
@@ -434,19 +477,29 @@ class PersonalizedRecommendationService:
         popularity = request.popularity
         genre_rankings = []
         for name in list(request.profile.genre_affinity)[: request.settings.popular_genres]:
-            genre = await self.repository.find_genre(name)
-            if genre is None:
-                continue
-            members = await self.repository.genre_members(
-                genre.id, popularity.id, MIN_GENRE_AFFINITY, GENRE_POPULARITY_WEIGHT, 300
-            )
-            genre_rankings.append(
-                [(m.track_id, genre_score(m.affinity, m.popularity)) for m in members]
-            )
-        popular = await self.repository.popular(popularity.id, 500)
+            key = (popularity.id, f"genre:{name}")
+            ranking = POPULARITY_CACHE.get(key)
+            if ranking is None:
+                genre = await self.repository.find_genre(name)
+                members = (
+                    []
+                    if genre is None
+                    else await self.repository.genre_members(
+                        genre.id, popularity.id, MIN_GENRE_AFFINITY, GENRE_POPULARITY_WEIGHT, 300
+                    )
+                )
+                ranking = [(m.track_id, genre_score(m.affinity, m.popularity)) for m in members]
+                POPULARITY_CACHE.put(key, ranking)
+            if ranking:
+                genre_rankings.append(ranking)
+        popular = POPULARITY_CACHE.get((popularity.id, "popular"))
+        if popular is None:
+            rows = await self.repository.popular(popularity.id, 500)
+            popular = [(row.track_id, row.score) for row in rows]
+            POPULARITY_CACHE.put((popularity.id, "popular"), popular)
         return popularity_candidates(
             genre_rankings,
-            [(row.track_id, row.score) for row in popular],
+            popular,
             exclude=request.heard,
             limit=request.settings.popularity_limit,
             model_version=popularity.version,
@@ -462,6 +515,8 @@ class PersonalizedRecommendationService:
         *,
         collection: str = "for_you",
         exclude: Collection[uuid.UUID] = (),
+        request_context: RequestContext | None = None,
+        params: Mapping[str, Any] | None = None,
     ) -> PersonalizedResponse:
         """The personal mix. `collection` "hidden_gems" keeps only lesser-known tracks (popularity
         score at most HIDDEN_GEM_MAX_POPULARITY) under the hidden-gems policy; `exclude` removes
@@ -590,6 +645,16 @@ class PersonalizedRecommendationService:
             ranker_name = ranker.kind
         negative = np.array([profile.negative_artists.get(a, 0.0) for a in artists])
         relevance = demote_negative_artists(normalized_relevance(scores), negative)
+        context_fits, applied = await self._context(
+            user_id,
+            profile,
+            candidates,
+            relevance,
+            request_context,
+            params or {},
+            personalized and not cold,
+        )
+        relevance = relevance + context_fits
         default = (
             None if settings.default_mode == "auto" else ExplorationMode(settings.default_mode)
         )
@@ -614,6 +679,13 @@ class PersonalizedRecommendationService:
         if gems:
             reasons = [
                 explanations.hidden_gem_reason(reason, facts[candidates[i]].listeners)
+                for reason, i in zip(reasons, picked, strict=True)
+            ]
+        if applied.get("session_events"):
+            reasons = [
+                f"{reason}; in tune with what you are playing now"
+                if context_fits[i] >= SESSION_REASON_THRESHOLD
+                else reason
                 for reason, i in zip(reasons, picked, strict=True)
             ]
         ordered = [(candidates[i], float(relevance[i]), bool(discovery[i]), i) for i in picked]
@@ -649,7 +721,71 @@ class PersonalizedRecommendationService:
             mode_label=mode_label,
             policy=policy.category,
             titles=titles,
+            applied_context=applied,
         )
+
+    async def _context(
+        self,
+        user_id: uuid.UUID,
+        profile: TasteProfile[uuid.UUID, uuid.UUID],
+        candidates: Sequence[uuid.UUID],
+        relevance: FloatArray,
+        request_context: RequestContext | None,
+        params: Mapping[str, Any],
+        enabled: bool,
+    ) -> tuple[FloatArray, dict[str, Any]]:
+        """Context nudges (context.py): the session (previous hour) and, only when an experiment
+        switches it on, the time of day. Returns per-candidate adjustments and what was used."""
+        nudges = np.zeros(len(candidates))
+        session_weight = float(params.get("session_weight", ctx.DEFAULT_SESSION_WEIGHT))
+        daypart_weight = float(params.get("daypart_weight", ctx.DEFAULT_DAYPART_WEIGHT))
+        applied: dict[str, Any] = {
+            "session_weight": session_weight,
+            "daypart_weight": daypart_weight,
+        }
+        overall = ctx.normalized(profile.genre_affinity)
+        if session_weight <= 0 and daypart_weight <= 0:
+            return nudges, applied
+        if not enabled or not candidates or not overall:
+            return nudges, applied
+        now = (request_context.now if request_context else None) or datetime.now(UTC)
+        events = await self.profiles.users.events(user_id)
+        positive = [
+            (track, when)
+            for track, kind, when in zip(
+                events.track_ids, events.event_types, events.occurred_at, strict=True
+            )
+            if kind in ctx.POSITIVE_EVENTS
+        ]
+        window = now - timedelta(minutes=ctx.SESSION_WINDOW_MINUTES)
+        recent = [track for track, when in positive if window <= when <= now]
+        zone = request_context.zone if request_context else None
+        # The composer only looks at the best `pool` candidates, and a nudge of at most the
+        # weight cannot lift a track from further down: only the top CONTEXT_POOL are scored.
+        rows = np.argsort(-relevance, kind="stable")[:CONTEXT_POOL]
+        scored = [candidates[i] for i in rows]
+        needed = set(scored) | set(recent)
+        if daypart_weight > 0 and zone is not None:
+            needed |= {track for track, _ in positive}
+        genres = await self._genres(list(needed))
+        if session_weight > 0:
+            session = ctx.build_session(genres.get(t, {}) for t in recent)
+            applied["session_events"] = session.events
+            if session.events >= ctx.MIN_SESSION_EVENTS:
+                nudges[rows] += session_weight * np.array(
+                    [ctx.session_fit(session, overall, genres.get(t, {})) for t in scored]
+                )
+        if daypart_weight > 0 and zone is not None:
+            part = ctx.daypart_of(now, zone)
+            history = ctx.build_context_profile(
+                (ctx.daypart_of(when, zone), genres.get(track, {})) for track, when in positive
+            )
+            applied["daypart"] = part
+            applied["daypart_events"] = history.evidence(part)
+            nudges[rows] += daypart_weight * np.array(
+                [ctx.context_fit(history, part, genres.get(t, {})) for t in scored]
+            )
+        return nudges, applied
 
     async def _matrix(
         self, content: ModelVersion | None, tracks: Sequence[uuid.UUID]
@@ -744,7 +880,7 @@ class PersonalizedRecommendationService:
         seeds = set(request.content_seed_of.values()) | set(request.item_best_seed.values())
         titles = await self.catalogue.track_summaries([*seeds, *tracks])
         names = await self.profiles.users.artist_names([facts[t].artist_id for t in tracks])
-        genres = await self.repository.genre_profiles(tracks)
+        genres = await self._genres(tracks)
         plays = dict(zip(request.context.signals.keys, request.context.signals.plays, strict=True))
         reasons = []
         for row, track in zip(picked, tracks, strict=True):
@@ -799,6 +935,7 @@ class PersonalizedRecommendationService:
         mode_label: str | None = None,
         policy: str = "for_you",
         titles: Mapping[uuid.UUID, TrackSummary] | None = None,
+        applied_context: dict[str, Any] | None = None,
     ) -> PersonalizedResponse:
         versions = {
             v.model_type: v.version
@@ -857,6 +994,7 @@ class PersonalizedRecommendationService:
                 )
                 for r in candidates.reports
             ],
+            context=applied_context or {},
         )
         logger.info(
             "recommendations request_id=%s strategy=%s model=%s count=%d",
@@ -915,7 +1053,7 @@ class PersonalizedRecommendationService:
         )
         seed_genres = await self.repository.artist_genres(artist_id)
         chosen = [tracks[i] for i in picked]
-        genres = await self.repository.genre_profiles(chosen)
+        genres = await self._genres(chosen)
         similarity = dict(pool)
         reasons = {}
         for track in chosen:

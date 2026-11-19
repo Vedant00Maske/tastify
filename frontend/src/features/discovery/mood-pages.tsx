@@ -106,7 +106,9 @@ export function MoodDetailPage({ moodKey }: { moodKey: string }) {
   }
 
   const { mood, personalized } = mix.data;
-  const tracks = mix.data.recommendations.map(fromRecommendation);
+  const tracks = mix.data.recommendations.map((item) =>
+    fromRecommendation(item, mix.data.request_id),
+  );
   const queue = tracks.map(toQueue);
 
   const regenerate = () => {

@@ -6,6 +6,7 @@ from app.api.routes import (
     auth,
     catalogue,
     health,
+    integrations,
     interactions,
     playlists,
     recommendations,
@@ -20,3 +21,4 @@ api_router.include_router(interactions.router)
 api_router.include_router(catalogue.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(playlists.router)
+api_router.include_router(integrations.router)

@@ -14,8 +14,8 @@ This plan supersedes the milestone numbering of the original §16 below, which i
 | 2 – Recommendation Engine V1 | Popularity baseline, content-based recommendations, similarity search, offline evaluation | Done |
 | 3 – Personalized Hybrid Recommendation | Taste profiles, collaborative filtering, embeddings, candidate generation, ranking, diversity | Done |
 | 4 – Complete User Application | Authentication, onboarding, discovery dashboard, playlists, feedback, personalized categories | Done (pending review) |
-| 5 – Music Platform Integrations | ListenBrainz, MusicBrainz, Spotify and YouTube integrations, subject to API permissions | Planned |
-| 6 – Advanced Recommendation Intelligence | Context-aware ranking, cold-start improvements, natural-language playlists, experimentation, optimization | Planned |
+| 5 – Music Platform Integrations | ListenBrainz, MusicBrainz, Spotify and YouTube integrations, subject to API permissions | Done (pending review) |
+| 6 – Advanced Recommendation Intelligence | Context-aware ranking, cold-start improvements, natural-language playlists, experimentation, optimization | Done (pending review) |
 | 7 – Production Hardening | Security audits, performance, scalability, observability, deployment, data recovery | Planned |
 | 8 – Public Beta and Growth | Real users, feedback collection, A/B testing, model improvement, product analytics | Planned |
 
@@ -98,10 +98,55 @@ analytics, settings) whose recommendations respond to what they like, save and s
       simulated playback), mobile navigation, skip link
 - [x] Pages: login, register, onboarding (genres, artists, moods and exclusions, exploration
       slider, first mix), home, discover, moods, playlists, taste, search, settings, artist and
-      track pages, not-found and error pages; loading, empty and error states throughout
+      track pages, not-found and error pages; loading, empty, error and offline states
+      throughout; WCAG 2.1 AA checked with axe-core; no horizontal scrolling from 360 to 1920 px
 - [x] Tests: backend unit and integration tests for auth, privacy, collections and playlists;
       Vitest component and logic tests; Playwright journeys (register, onboarding, login, dashboard,
-      feedback, discovery, moods, playlists, taste, search, logout) against a mocked API
+      feedback, discovery, moods, playlists incl. keyboard reordering, taste, search, settings,
+      offline, account deletion, logout) against a mocked API
+- [ ] Password reset and e-mail verification: need an e-mail service (moved to Milestone 7)
+
+### Milestone 5 deliverables
+
+Acceptance criteria (original §16): provider-specific failures are isolated, tokens are securely
+managed, playlist export is retry-safe, provider quotas are respected (ADR-018, INTEGRATIONS.md).
+
+- [x] Provider abstraction: adapters with declared auth kind and capabilities, typed errors,
+      offered only when configured
+- [x] ListenBrainz: token connection, consented incremental listen import, private playlist export
+- [x] MusicBrainz: recording search beyond the catalogue, 1 request per second
+- [x] Spotify (Development Mode, verified 2026-11-17): OAuth with PKCE, saved and recently played
+      import, playlist export by ISRC; the five-account allow-list explained to users
+- [x] YouTube: Google OAuth, private playlist export within the daily quota (Redis meter, 50-track
+      cap, cached video ids re-checked after 30 days)
+- [x] Retry-safe exports (remote id saved first, found again by marker, items replaced), token
+      encryption and refresh, failure isolation (migration `04f15fd99085`)
+- [x] Frontend: Connected services in Settings, export menu and status on playlists, MusicBrainz
+      fallback in search; backend tests against fake provider servers, E2E journeys
+- [ ] Full ListenBrainz history through its export API (background job): later
+
+### Milestone 6 deliverables
+
+Acceptance criterion: changes to recommendation behaviour are justified by offline evidence and
+measurable online; users can describe a playlist in their own words and see why each track was
+chosen (ADR-019, reports/context-benchmark.md).
+
+- [x] Context measured on unseen days: session (previous hour) +10.5% genre predictability, used
+      by default; time of day no better than shuffled dayparts, off by default
+- [x] Context-aware for-you: session nudge with explanation; daypart nudge available to experiments;
+      browser time zone sent with every request
+- [x] Prompt playlists (`POST /recommendations/custom`, FR-016): deterministic interpreter (genres,
+      moods, artists, exclusions, tempo, energy, era, popularity, familiarity), evidence-based
+      ranking and reasons, interpretation and ignored words returned; saved as regenerable
+      playlists; Create page
+- [x] Recommendation logging (spec §6.2) and feedback attribution by request id; data export and
+      retention
+- [x] Online experiments: deterministic weighted assignment, per-variant outcome report with
+      confidence intervals and significance test, command-line management
+- [x] Cold start: prompt playlists need no history at all, and the session nudge works from a new
+      user's first few interactions (declared genres and artists already seed first mixes, M3/M4)
+- [x] Optimization: profiled for-you; popularity and genre-profile caches keyed by immutable model
+      versions; context scored on the best 250 candidates (773 ms -> about 530 ms in process)
 
 ## 16. Development Roadmap
 

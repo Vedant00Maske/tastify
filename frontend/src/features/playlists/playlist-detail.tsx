@@ -62,6 +62,7 @@ import {
   Spinner,
 } from "@/components/ui/states";
 import { useFeedbackStates } from "@/features/feedback/queries";
+import { PlaylistExport } from "@/features/integrations/playlist-export";
 import { ApiError } from "@/services/api-client";
 import { usePlayer } from "@/stores/player";
 import type { PlaylistDetail } from "@/types/api";
@@ -84,6 +85,7 @@ const COLLECTION_LABELS: Record<string, string> = {
   hidden_gems: "hidden gems",
   genre: "a genre",
   artist_radio: "an artist radio",
+  custom: "a prompt",
 };
 
 function SortableTrack({
@@ -232,7 +234,8 @@ function Suggestions({ playlist }: { playlist: PlaylistDetail }) {
   );
   const add = useAddToPlaylist();
   const tracks =
-    suggestions.data?.recommendations.map(fromRecommendation) ?? [];
+    suggestions.data?.recommendations.map((item) => fromRecommendation(item)) ??
+    [];
   if (!tracks.length) return null;
   return (
     <Section
@@ -375,6 +378,7 @@ export function PlaylistDetailPage({ id }: { id: string }) {
             {regenerate.isPending ? <Spinner /> : <RefreshCw />} Regenerate
           </Button>
         ) : null}
+        <PlaylistExport playlistId={data.id} trackCount={data.tracks.length} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

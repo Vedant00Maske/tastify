@@ -43,7 +43,9 @@ dummy hash so login timing does not reveal accounts. A login creates a 256-bit r
 its SHA-256 hash is stored (`user_sessions`). The cookie `tastify_session` is `HttpOnly`,
 `SameSite=Lax`, `Path=/`, `Secure` outside local and test, valid 30 days and extended at most
 hourly while in use. Logout revokes the session; a password change revokes every other session;
-account deletion removes the user and everything that cascades from it.
+account deletion removes the user and everything that cascades from it. Both password
+confirmations answer a wrong password with `403`: `401` always means "signed out", and the
+client answers it by sending the user to the sign-in page.
 
 **Cross-site requests and abuse.** State-changing requests that carry an `Origin` header which
 is not an allowed origin are rejected with `403` before routing (browsers send `Origin` on the
@@ -85,7 +87,15 @@ server state in TanStack Query (keys in one module, optimistic feedback and reor
 in Zustand, forms in React Hook Form with Zod schemas shared with validation of every API
 response; design tokens as Tailwind theme variables; Radix primitives for dialogs, menus,
 sliders, switches and tabs; Motion with reduced-motion respected; Recharts for the one time
-series, with a table view beside it.
+series, with a table view beside it. The muted text colour is `#9A9D93` instead of the
+specification's `#74776D`, which falls below WCAG AA contrast (4.5:1) on every surface but the
+page background; axe-core checks every page at desktop and phone widths in CI.
+
+**Offline.** Queries pause rather than fail while the browser is offline, feedback and
+playlist changes made meanwhile are sent on reconnect, and a banner says so.
+
+**Not in this milestone.** Password reset and e-mail verification need an e-mail delivery
+service; they are scheduled with production hardening (Milestone 7).
 
 ## Consequences
 

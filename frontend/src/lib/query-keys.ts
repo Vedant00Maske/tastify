@@ -29,4 +29,7 @@ export const keys = {
   playlists: ["playlists"] as const,
   playlist: (id: string) => ["playlist", id] as const,
   suggestions: (id: string) => ["playlist-suggestions", id] as const,
+  integrations: ["integrations"] as const,
+  exports: (playlistId: string) => ["playlist-exports", playlistId] as const,
+  musicbrainz: (q: string) => ["musicbrainz", q] as const,
 };

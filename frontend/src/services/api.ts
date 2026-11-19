@@ -1,8 +1,11 @@
 /** Typed operations of the TASTIFY API (docs/API_SPEC.md), one function per endpoint. */
 import {
   ArtistDetailSchema,
+  AuthorizeSchema,
+  ImportRunSchema,
   ArtistSearchSchema,
   BecauseYouListenedSchema,
+  CustomResponseSchema,
   FeedbackStatesSchema,
   GenreListSchema,
   InteractionHistorySchema,
@@ -12,13 +15,18 @@ import {
   MoodMixSchema,
   PersonalizedResponseSchema,
   PlaylistDetailSchema,
+  PlaylistExportListSchema,
+  PlaylistExportSchema,
   PlaylistListSchema,
   PreferencesSchema,
+  ProviderListSchema,
+  RecordingSearchSchema,
   RecommendationResponseSchema,
   TasteAnalyticsSchema,
   TasteProfileSchema,
   TrackDetailSchema,
   TrackSearchSchema,
+  type CustomRequest,
   type EventType,
   type ExplorationMode,
   type Generator,
@@ -141,6 +149,12 @@ export const recommendations = {
         schema: RecommendationResponseSchema,
       },
     ),
+  custom: (body: CustomRequest) =>
+    apiFetch("/recommendations/custom", {
+      method: "POST",
+      body,
+      schema: CustomResponseSchema,
+    }),
   popular: (limit = 20, kind: "all_time" | "trending" = "all_time") =>
     apiFetch(withQuery("/recommendations/popular", { limit, kind }), {
       schema: RecommendationResponseSchema,
@@ -152,6 +166,7 @@ export const recommendations = {
 export interface FeedbackEvent {
   track_id: string;
   event_type: EventType;
+  request_id?: string;
   position_ms?: number;
   client_event_id?: string;
 }
@@ -230,5 +245,48 @@ export const playlists = {
   suggestions: (id: string, limit = 10) =>
     apiFetch(withQuery(`/playlists/${id}/suggestions`, { limit }), {
       schema: RecommendationResponseSchema,
+    }),
+};
+
+// --- integrations ----------------------------------------------------------------------------
+
+export const integrations = {
+  list: () => apiFetch("/integrations", { schema: ProviderListSchema }),
+  connectToken: (provider: string, token: string) =>
+    apiFetch(`/integrations/${provider}/connect`, {
+      method: "POST",
+      body: { token },
+      schema: ProviderListSchema,
+    }),
+  authorize: (provider: string) =>
+    apiFetch(`/integrations/${provider}/authorize`, {
+      schema: AuthorizeSchema,
+    }),
+  disconnect: (provider: string, deleteImported: boolean) =>
+    apiFetch<void>(
+      withQuery(`/integrations/${provider}`, {
+        delete_imported: deleteImported,
+      }),
+      { method: "DELETE" },
+    ),
+  importHistory: (provider: string) =>
+    apiFetch(`/integrations/${provider}/import`, {
+      method: "POST",
+      body: { consent: true },
+      schema: ImportRunSchema,
+    }),
+  searchMusicBrainz: (q: string) =>
+    apiFetch(withQuery("/integrations/musicbrainz/search", { q, limit: 8 }), {
+      schema: RecordingSearchSchema,
+    }),
+  exports: (playlistId: string) =>
+    apiFetch(`/playlists/${playlistId}/exports`, {
+      schema: PlaylistExportListSchema,
+    }),
+  exportPlaylist: (playlistId: string, provider: string) =>
+    apiFetch(`/playlists/${playlistId}/export`, {
+      method: "POST",
+      body: { provider },
+      schema: PlaylistExportSchema,
     }),
 };

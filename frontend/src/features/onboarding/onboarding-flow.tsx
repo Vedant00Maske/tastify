@@ -460,8 +460,8 @@ export function OnboardingFlow() {
                 firstMix.data.recommendations.length ? (
                   <TrackCards
                     label="Your first recommendations"
-                    tracks={firstMix.data.recommendations.map(
-                      fromRecommendation,
+                    tracks={firstMix.data.recommendations.map((item) =>
+                      fromRecommendation(item, firstMix.data.request_id),
                     )}
                   />
                 ) : (

@@ -18,6 +18,10 @@
 #
 # Connection settings: PGHOST, PGUSER, PGPASSWORD, PGDATABASE (inside the postgres container
 # the defaults come from POSTGRES_USER / POSTGRES_DB).
+#
+# CATALOGUE_SKIP_TABLES="raw_records" leaves tables out of an export. raw_records (source
+# payloads, ~80 MB) serve provenance and reprocessing only, never the API: skipping them fits the
+# catalogue into a 0.5 GB hosted database (Vercel deployment, DEPLOYMENT.md).
 set -eu
 
 export PGUSER="${PGUSER:-${POSTGRES_USER:-soniqueo}}"
@@ -29,8 +33,9 @@ playlist_exports provider_connections provider_imports provider_track_ids \
 recommendation_requests recommendation_logs experiments alembic_version"
 
 catalogue_tables() {
+	# $1: further tables to leave out (export only).
 	# shellcheck disable=SC2086 # split the list into one argument per table
-	excluded="$(printf "'%s'," $USER_TABLES)"
+	excluded="$(printf "'%s'," $USER_TABLES ${1:-})"
 	psql -tA -c "SELECT tablename FROM pg_tables WHERE schemaname = 'public'
 		AND tablename NOT IN (${excluded%,}) ORDER BY tablename"
 }
@@ -39,7 +44,9 @@ case "${1:-}" in
 export)
 	target="${2:?usage: catalogue.sh export <file|->}"
 	args=""
-	for table in $(catalogue_tables); do args="$args --table=public.$table"; done
+	for table in $(catalogue_tables "${CATALOGUE_SKIP_TABLES:-}"); do
+		args="$args --table=public.$table"
+	done
 	revision="$(psql -tAc "SELECT version_num FROM alembic_version")"
 	echo "catalogue: exporting at schema revision $revision" >&2
 	# shellcheck disable=SC2086

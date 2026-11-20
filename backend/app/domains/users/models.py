@@ -42,6 +42,7 @@ from app.domains.users.events import EVENT_TYPES
 from app.domains.users.profile import ExplorationMode
 
 USER_STATUSES = ("active", "deleted")
+ACCOUNT_TOKEN_PURPOSES = ("password_reset", "email_verification")
 PREFERENCES = ("preferred", "excluded")
 
 
@@ -63,6 +64,8 @@ class User(Base):
     status: Mapped[str] = mapped_column(String(16), server_default=text("'active'"))
     # Terms and privacy acknowledgement at registration (spec §12.4, consent).
     terms_accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # When the user proved they receive mail at `email` (Milestone 7); cleared if it changes.
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
@@ -84,6 +87,28 @@ class UserSession(Base):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     user_agent: Mapped[str | None] = mapped_column(String(256))
+
+
+class AccountToken(Base):
+    """A single-use secret sent by e-mail: a password reset or an address verification link
+    (Milestone 7, ADR-020). Like session tokens, only the SHA-256 is stored; tokens expire, are
+    marked used when redeemed, and issuing a new one invalidates older unused ones."""
+
+    __tablename__ = "account_tokens"
+    __table_args__ = (
+        CheckConstraint(_in("purpose", ACCOUNT_TOKEN_PURPOSES), name="purpose_valid"),
+        Index("ix_account_tokens_user_id_purpose", "user_id", "purpose"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    purpose: Mapped[str] = mapped_column(String(32))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    # The address the link was sent to: a verification only counts for that address.
+    email: Mapped[str] = mapped_column(String(254))
+    created_at: Mapped[datetime] = created_at_column()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class UserPreference(Base):

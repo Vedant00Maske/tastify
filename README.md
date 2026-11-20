@@ -4,7 +4,7 @@ Personalized music discovery and playlist generation. TASTIFY learns individual 
 listening history, interactions, moods, genres and discovery preferences, and owns its recommendation
 intelligence. Music platforms serve only as metadata, user-data and playlist-export providers.
 
-**Status:** Milestone 6 (advanced recommendation intelligence: evidence-based session context, prompt playlists, online experiments, optimization) complete, pending review. See [docs/ROADMAP.md](docs/ROADMAP.md).
+**Status:** Milestone 7 (production hardening: security audit, password reset and e-mail verification, load-tested performance, replicas behind HTTPS, monitoring, backups and recovery) complete, pending review. See [docs/ROADMAP.md](docs/ROADMAP.md).
 The approved product and engineering specification is [TASTIFY_v0.1.md](TASTIFY_v0.1.md).
 
 ## Tech stack
@@ -82,10 +82,13 @@ tastify/
 | [Model benchmark](docs/reports/model-benchmark.md) | Milestone 2 models: offline evaluation (generated)      |
 | [Hybrid benchmark](docs/reports/hybrid-benchmark.md) | Milestone 3 personalization: offline evaluation (generated) |
 | [Context benchmark](docs/reports/context-benchmark.md) | Milestone 6: does time of day or the session predict listening? (generated) |
+| [Load test](docs/reports/load-test.md) | Milestone 7: latency and throughput of the production stack |
+| [Security audit](docs/reports/security-audit.md) | Milestone 7: findings, fixes and the spec §11.6 checklist |
 | [INTEGRATIONS](docs/INTEGRATIONS.md)               | Provider abstraction and provider constraints            |
 | [TESTING](docs/TESTING.md)                         | Testing strategy and how to run tests                    |
 | [SECURITY](docs/SECURITY.md)                       | Security and privacy architecture                        |
-| [DEPLOYMENT](docs/DEPLOYMENT.md)                   | Environments, containers, observability                  |
+| [DEPLOYMENT](docs/DEPLOYMENT.md)                   | Environments, production stack, first deployment, monitoring |
+| [RUNBOOK](docs/RUNBOOK.md)                         | Deploy, roll back, restore, rotate secrets, respond to alerts |
 | [ROADMAP](docs/ROADMAP.md)                         | Milestones and progress                                  |
 | [DEVELOPMENT](docs/DEVELOPMENT.md)                 | Local setup and everyday commands                        |
 | [CONTRIBUTING](docs/CONTRIBUTING.md)               | Branching, commits, coding standards, Definition of Done |

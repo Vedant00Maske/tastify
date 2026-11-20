@@ -14,9 +14,11 @@ from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.limits import limit
 from app.core.config import get_settings
 from app.core.database import get_db_session
 from app.core.redis import get_redis
+from app.domains.auth import rate_limit
 from app.domains.auth.dependencies import CurrentUser, optional_user
 from app.domains.integrations.providers.base import (
     IntegrationError,
@@ -185,7 +187,10 @@ async def disconnect(
         raise integration_error(error) from error
 
 
-@router.post("/integrations/{provider}/import")
+@router.post(
+    "/integrations/{provider}/import",
+    dependencies=[limit(rate_limit.IMPORT_PER_USER, per="user")],
+)
 async def import_history(
     provider: str, data: ImportIn, user: CurrentUser, service: Service
 ) -> ImportOut:
@@ -201,7 +206,10 @@ async def list_imports(user: CurrentUser, service: Service) -> list[ImportOut]:
     return await service.imports(user.id)
 
 
-@router.get("/integrations/musicbrainz/search")
+@router.get(
+    "/integrations/musicbrainz/search",
+    dependencies=[limit(rate_limit.MUSICBRAINZ_PER_CLIENT)],
+)
 async def search_musicbrainz(
     user: CurrentUser,
     service: Service,
@@ -215,7 +223,10 @@ async def search_musicbrainz(
         raise integration_error(error) from error
 
 
-@router.post("/playlists/{playlist_id}/export")
+@router.post(
+    "/playlists/{playlist_id}/export",
+    dependencies=[limit(rate_limit.EXPORT_PER_USER, per="user")],
+)
 async def export_playlist(
     playlist_id: uuid.UUID, data: ExportIn, user: CurrentUser, service: Service
 ) -> ExportOut:

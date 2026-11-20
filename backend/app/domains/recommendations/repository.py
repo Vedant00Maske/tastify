@@ -3,6 +3,7 @@
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy import (
     ColumnElement,
@@ -19,6 +20,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.memo import TimedCache
 from app.domains.catalogue.models import (
     Artist,
     ArtistGenre,
@@ -134,6 +136,20 @@ def _artist_tag_weights(where: ColumnElement[bool]) -> Select[tuple[uuid.UUID, u
     )
 
 
+# Genre and tag member rankings (Milestone 7): expensive queries (hundreds of ms) whose results
+# depend only on the catalogue and the popularity version in the key. One hour bounds staleness
+# after a catalogue update that keeps the version.
+MEMBERS: TimedCache[list[Any]] = TimedCache("genre_members", size=512, ttl_seconds=3600)
+
+
+def _floats(vector: Any) -> list[float]:
+    """A stored vector as Python floats. pgvector returns numpy arrays: `tolist` converts in C,
+    with the same values as converting element by element."""
+    if hasattr(vector, "tolist"):
+        return list(vector.tolist())
+    return [float(v) for v in vector]
+
+
 class RecommendationRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -155,7 +171,7 @@ class RecommendationRepository:
                 TrackEmbedding.model_version_id == version_id, TrackEmbedding.track_id == track_id
             )
         )
-        return None if vector is None else [float(v) for v in vector]
+        return None if vector is None else _floats(vector)
 
     async def artist_embedding(
         self, version_id: uuid.UUID, artist_id: uuid.UUID
@@ -166,7 +182,7 @@ class RecommendationRepository:
                 ArtistEmbedding.artist_id == artist_id,
             )
         )
-        return None if vector is None else [float(v) for v in vector]
+        return None if vector is None else _floats(vector)
 
     async def _tune_search(self, ef_search: int) -> None:
         # Scoped to the current transaction. iterative_scan keeps exact result counts when the
@@ -192,6 +208,38 @@ class RecommendationRepository:
             .limit(limit)
         )
         return [(track_id, 1.0 - float(d)) for track_id, d in rows]
+
+    async def nearest_tracks_for_seeds(
+        self, version_id: uuid.UUID, seeds: Sequence[uuid.UUID], limit: int, ef_search: int
+    ) -> dict[uuid.UUID, list[tuple[uuid.UUID, float]]]:
+        """`nearest_tracks` for many seed tracks in one round trip (Milestone 7 optimization):
+        a LATERAL join runs one HNSW index search per seed, using the seeds' stored embeddings.
+        Seeds without an embedding in this version are absent from the result."""
+        if not seeds:
+            return {}
+        await self._tune_search(ef_search)
+        rows = await self.session.execute(
+            text(
+                """
+                SELECT s.track_id AS seed, n.track_id, n.distance
+                FROM track_embeddings AS s
+                CROSS JOIN LATERAL (
+                    SELECT e.track_id, e.embedding <=> s.embedding AS distance
+                    FROM track_embeddings AS e
+                    WHERE e.model_version_id = :version
+                    ORDER BY e.embedding <=> s.embedding
+                    LIMIT :limit
+                ) AS n
+                WHERE s.model_version_id = :version AND s.track_id = ANY(:seeds)
+                ORDER BY s.track_id, n.distance
+                """
+            ),
+            {"version": version_id, "seeds": list(seeds), "limit": limit},
+        )
+        found: dict[uuid.UUID, list[tuple[uuid.UUID, float]]] = {}
+        for seed, track_id, distance in rows:
+            found.setdefault(seed, []).append((track_id, 1.0 - float(distance)))
+        return found
 
     async def nearest_artists(
         self, version_id: uuid.UUID, vector: Sequence[float], limit: int, ef_search: int
@@ -354,6 +402,24 @@ class RecommendationRepository:
         popularity_weight: float,
         limit: int,
     ) -> list[GenreMember]:
+        """`_genre_members`, cached per process (MEMBERS): the same for every user."""
+        key = ("genre", genre_id, popularity_version_id, min_affinity, popularity_weight, limit)
+        cached = MEMBERS.get(key)
+        if cached is None:
+            cached = await self._genre_members(
+                genre_id, popularity_version_id, min_affinity, popularity_weight, limit
+            )
+            MEMBERS.put(key, cached)
+        return list(cached)
+
+    async def _genre_members(
+        self,
+        genre_id: uuid.UUID,
+        popularity_version_id: uuid.UUID,
+        min_affinity: float,
+        popularity_weight: float,
+        limit: int,
+    ) -> list[GenreMember]:
         """Tracks tagged with the genre, best genre score first (see ranking.genre_score).
 
         Affinity = strongest level factor x smoothed tag weight over the track's recording and
@@ -449,7 +515,7 @@ class RecommendationRepository:
                 TrackEmbedding.track_id.in_(set(track_ids)),
             )
         )
-        return {t: [float(v) for v in e] for t, e in rows}
+        return {t: _floats(e) for t, e in rows}
 
     async def artist_embeddings(
         self, version_id: uuid.UUID, artist_ids: Sequence[uuid.UUID]
@@ -462,7 +528,7 @@ class RecommendationRepository:
                 ArtistEmbedding.artist_id.in_(set(artist_ids)),
             )
         )
-        return {a: [float(v) for v in e] for a, e in rows}
+        return {a: _floats(e) for a, e in rows}
 
     async def cf_factors(
         self, version_id: uuid.UUID, track_ids: Sequence[uuid.UUID]
@@ -480,7 +546,7 @@ class RecommendationRepository:
                 TrackCollaborativeFactors.track_id.in_(set(track_ids)),
             )
         )
-        return {t: ([float(v) for v in f], float(idf)) for t, f, idf in rows}
+        return {t: (_floats(f), float(idf)) for t, f, idf in rows}
 
     async def nearest_by_inner_product(
         self, version_id: uuid.UUID, vector: Sequence[float], limit: int, ef_search: int
@@ -537,6 +603,22 @@ class RecommendationRepository:
         return {name.lower(): genre_id for name, genre_id in rows}
 
     async def tag_members(
+        self,
+        genre_ids: Sequence[uuid.UUID],
+        popularity_version_id: uuid.UUID,
+        min_affinity: float,
+        limit: int,
+    ) -> list[TagMember]:
+        """`_tag_members`, cached per process (MEMBERS): mood mixes and prompt playlists ask for
+        the same genre sets again and again, and the answer is the same for every user."""
+        key = ("tags", tuple(sorted(genre_ids)), popularity_version_id, min_affinity, limit)
+        cached = MEMBERS.get(key)
+        if cached is None:
+            cached = await self._tag_members(genre_ids, popularity_version_id, min_affinity, limit)
+            MEMBERS.put(key, cached)
+        return list(cached)
+
+    async def _tag_members(
         self,
         genre_ids: Sequence[uuid.UUID],
         popularity_version_id: uuid.UUID,

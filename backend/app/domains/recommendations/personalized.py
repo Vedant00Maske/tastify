@@ -22,6 +22,8 @@ import json
 import logging
 import math
 import secrets
+import threading
+import time
 import uuid
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Collection, Mapping, Sequence
@@ -33,6 +35,7 @@ import numpy as np
 import numpy.typing as npt
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import metrics
 from app.domains.catalogue.models import Artist
 from app.domains.catalogue.repository import CatalogueRepository
 from app.domains.catalogue.schemas import TrackSummary
@@ -130,6 +133,10 @@ class RequestContext:
     zone: tzinfo | None = None
     now: datetime | None = None
 
+    @property
+    def zone_name(self) -> str | None:
+        return None if self.zone is None else str(self.zone)
+
 
 @dataclass(frozen=True)
 class HybridSettings:
@@ -179,30 +186,38 @@ class _ArtifactCache:
     """Parsed artifacts by (version id, name). Versions are immutable, so entries never go stale;
     the cache is bounded so retired versions eventually leave memory."""
 
-    def __init__(self, size: int = 8) -> None:
+    def __init__(self, name: str, size: int = 8) -> None:
+        self.name = name
         self.size = size
         self.items: OrderedDict[tuple[uuid.UUID, str], Any] = OrderedDict()
+        # Worker threads (precomputed mixes) share these caches; the API's single event loop
+        # never contends for the lock.
+        self._lock = threading.Lock()
 
     def get(self, key: tuple[uuid.UUID, str]) -> Any | None:
-        if key in self.items:
-            self.items.move_to_end(key)
-            return self.items[key]
-        return None
+        with self._lock:
+            value = self.items.get(key)
+            if value is not None:
+                self.items.move_to_end(key)
+        metrics.cache_lookup(self.name, hit=value is not None)
+        return value
 
     def put(self, key: tuple[uuid.UUID, str], value: Any) -> None:
-        self.items[key] = value
-        self.items.move_to_end(key)
-        while len(self.items) > self.size:
-            self.items.popitem(last=False)
+        with self._lock:
+            self.items[key] = value
+            self.items.move_to_end(key)
+            while len(self.items) > self.size:
+                self.items.popitem(last=False)
 
 
-ARTIFACTS = _ArtifactCache()
+ARTIFACTS = _ArtifactCache("model_artifacts")
 # Popularity rankings per (popularity version, genre): not personal, and fixed for a published
 # version, so they are computed once per process (Milestone 6 optimization, ADR-019).
-POPULARITY_CACHE = _ArtifactCache(size=256)
+POPULARITY_CACHE = _ArtifactCache("popularity_rankings", size=256)
 CONTEXT_POOL = 250  # only candidates this close to the top can be moved into the mix
 GENRE_CACHE_SIZE = 50_000
 _genre_cache: OrderedDict[tuple[uuid.UUID | None, uuid.UUID], dict[str, float]] = OrderedDict()
+_genre_lock = threading.Lock()
 
 
 @dataclass
@@ -248,21 +263,26 @@ class PersonalizedRecommendationService:
         version = content.id if content is not None else None
         found: dict[uuid.UUID, dict[str, float]] = {}
         missing: list[uuid.UUID] = []
-        for track in tracks:
-            cached = _genre_cache.get((version, track))
-            if cached is None:
-                missing.append(track)
-            else:
-                _genre_cache.move_to_end((version, track))
-                found[track] = cached
+        with _genre_lock:
+            for track in tracks:
+                cached = _genre_cache.get((version, track))
+                if cached is None:
+                    missing.append(track)
+                else:
+                    _genre_cache.move_to_end((version, track))
+                    found[track] = cached
         if missing:
             loaded = await self.repository.genre_profiles(missing)
-            for track in missing:
-                profile = loaded.get(track, {})
-                found[track] = profile
-                _genre_cache[(version, track)] = profile
-            while len(_genre_cache) > GENRE_CACHE_SIZE:
-                _genre_cache.popitem(last=False)
+            with _genre_lock:
+                for track in missing:
+                    profile = loaded.get(track, {})
+                    found[track] = profile
+                    _genre_cache[(version, track)] = profile
+                while len(_genre_cache) > GENRE_CACHE_SIZE:
+                    _genre_cache.popitem(last=False)
+        if tracks:
+            metrics.CACHE_REQUESTS.labels("genre_profiles", "hit").inc(len(tracks) - len(missing))
+            metrics.CACHE_REQUESTS.labels("genre_profiles", "miss").inc(len(missing))
         return found
 
     async def _isolated(
@@ -410,18 +430,19 @@ class PersonalizedRecommendationService:
             return CandidateList.skipped(Source.CONTENT, "no content model")
         profile = request.profile
         seeds = [*profile.seed_tracks, *profile.recent_tracks]
-        vectors = await self.repository.track_embeddings(request.content.id, seeds)
-        seed_neighbours = []
-        for seed in seeds:
-            if seed not in vectors:
-                continue
-            neighbours = await self.repository.nearest_tracks(
-                request.content.id,
-                vectors[seed],
-                request.settings.content_neighbours + 1,
-                EF_SEARCH,
-            )
-            seed_neighbours.append((seed, [(t, s) for t, s in neighbours if t != seed]))
+        # One query for every seed's neighbours (was one round trip per seed). A seed listed
+        # twice (strong and recent) still counts twice, as before.
+        neighbours_of = await self.repository.nearest_tracks_for_seeds(
+            request.content.id,
+            list(dict.fromkeys(seeds)),
+            request.settings.content_neighbours + 1,
+            EF_SEARCH,
+        )
+        seed_neighbours = [
+            (seed, [(t, s) for t, s in neighbours_of[seed] if t != seed])
+            for seed in seeds
+            if seed in neighbours_of
+        ]
         candidates, seed_of = content_candidates(
             seed_neighbours,
             exclude=request.heard,
@@ -523,6 +544,7 @@ class PersonalizedRecommendationService:
         tracks (e.g. a playlist's current tracks when it is regenerated)."""
         if collection not in ("for_you", "hidden_gems"):
             raise ValueError(f"unknown collection {collection}")
+        started = time.perf_counter()
         context = await self.profiles.current(user_id)
         popularity = await self._require("popularity")
         content = await self.repository.active_version("content")
@@ -595,6 +617,9 @@ class PersonalizedRecommendationService:
             song_keys=[facts[t].song_key if t in facts else None for t in items],
             eligible=[t in facts for t in items],
         )
+        retrieved = time.perf_counter()
+        metrics.RECOMMENDATION_LATENCY.labels(collection, "candidates").observe(retrieved - started)
+        metrics.RECOMMENDATION_CANDIDATES.labels(collection).observe(len(merged))
         gems = collection == "hidden_gems"
         if gems:
             lesser_known = [
@@ -702,6 +727,9 @@ class PersonalizedRecommendationService:
         mode_label = (
             (chosen_mode.value if chosen_mode is not None else "auto") if personalized else "off"
         )
+        finished = time.perf_counter()
+        metrics.RECOMMENDATION_LATENCY.labels(collection, "ranking").observe(finished - retrieved)
+        metrics.RECOMMENDATION_LATENCY.labels(collection, "total").observe(finished - started)
         return self._response(
             user_id,
             context,

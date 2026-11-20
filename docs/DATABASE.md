@@ -318,6 +318,19 @@ Design: ADR-019.
 `playlists.collection` also allows `custom` (playlists generated from a prompt; the generator
 keeps the prompt and exploration level).
 
+## Implemented account recovery schema (Milestone 7)
+
+ORM model: `AccountToken` in `backend/app/domains/users/models.py`. Migration: `487a37f66a1a`.
+Design: ADR-020.
+
+| Table / column | Purpose and key rules |
+| --- | --- |
+| `account_tokens` | Single-use e-mailed links: `purpose` (`password_reset`, `email_verification`; CHECK), SHA-256 `token_hash` (unique; the token itself is never stored), the `email` it was sent to, `expires_at`, `used_at`. User CASCADE; indexed by (user, purpose). Issuing a link marks older unused ones of the same purpose used. The daily retention job deletes links a day after they expire or are used. |
+| `users.email_verified_at` | When the user confirmed their address (verification link or password reset). |
+
+The daily retention job (`app/domains/maintenance.py`) also deletes expired sessions (and revoked
+ones after 7 days), recommendation logs past retention and provider ids older than 30 days.
+
 ## Migrations workflow
 
 Implemented in Milestone 0. Alembic runs on the async SQLAlchemy engine. The configuration lives in
@@ -356,6 +369,7 @@ linted and formatted with ruff automatically when generated.
 | `a28199fd7847` | Users and hybrid models (Milestone 3): users, preferences, immutable interactions, taste profiles, collaborative factors (HNSW inner product) and neighbours, model artifacts; `model_type` allows `collaborative` and `hybrid`. Downgrade deletes those versions first. |
 | `013841aab22d` | Accounts and playlists (Milestone 4): account columns on `users`, `user_sessions`, `playlists`, `playlist_tracks`, `user_preferences.preferred_moods`. Refuses to run while users exist. |
 | `04f15fd99085` | Provider integrations (Milestone 5): `provider_connections` (encrypted tokens), `provider_imports`, `playlist_exports`, `provider_track_ids`. |
+| `487a37f66a1a` | Account recovery (Milestone 7): `account_tokens`, `users.email_verified_at`. |
 | `810f8e91b18b` | Logging and experiments (Milestone 6): `recommendation_requests`, `recommendation_logs`, `experiments`, `user_interactions.request_id`, the `custom` playlist collection. Downgrade turns prompt playlists into manual ones. |
 
 ### Databases

@@ -15,6 +15,10 @@ os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://tastify:tastify@127.0.0.1:5432/tastify_test"
 )
 os.environ["REDIS_URL"] = os.environ.get("TEST_REDIS_URL", "redis://127.0.0.1:6379/15")
+# Tests never queue background jobs on a real broker; precompute is tested directly.
+os.environ["RECOMMENDATION_PRECOMPUTE"] = "false"
+# No real e-mail from tests (a developer .env may point at Mailpit); recovery tests record mail.
+os.environ["SMTP_HOST"] = ""
 
 
 @pytest.fixture

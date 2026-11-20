@@ -107,6 +107,39 @@ Design: [ADR-017](ADR/ADR-017-authentication-and-user-application.md).
 
 ---
 
+## Production hardening (implemented, Milestone 7)
+
+Design: [ADR-020](ADR/ADR-020-production-hardening.md). Audit, findings and the spec §11.6
+checklist: [security-audit.md](reports/security-audit.md).
+
+- **Account recovery.** Password reset and address verification links carry a random 256-bit
+  token; only its SHA-256 is stored (`account_tokens`). Links are single use, expire (60 minutes
+  and 48 hours), are replaced by newer ones and count only for the address they were sent to. A
+  reset signs out every session. Reset requests answer the same way for unknown addresses, do
+  their work after the response, and are limited per address silently, so they reveal nothing
+  about who has an account. The web app removes the token from the address bar after reading it.
+- **Rate limits** cover every expensive or guessable operation (API_SPEC.md), including password
+  confirmations, so a stolen session cannot be used to guess the password. Counters are atomic
+  and always expire.
+- **Edge.** HTTPS only (HSTS), security headers on pages and API responses, a content security
+  policy that allows only this origin, 1 MiB request bodies, `/metrics` never routed publicly,
+  forwarded client addresses trusted only from configured proxies.
+- **Redirects.** After sign-in, only same-origin paths are followed (backslashes and control
+  characters refused).
+- **Configuration.** In production the API refuses to start with HTTP origins, insecure cookies,
+  the development database password or no e-mail; interactive API docs are off.
+- **Logs and error reports.** Logs record route templates, never query strings; bearer tokens,
+  OAuth codes, passwords, reset tokens and session cookies are masked in every message.
+  Error tracking (optional, `SENTRY_DSN`) receives no request bodies, cookies, headers or user
+  ids; browser errors go to the API, not to a third-party script.
+- **Deployment.** Non-root, read-only containers without new privileges; only the edge proxy is
+  reachable; PostgreSQL and Redis require passwords; secrets only in `.env.production`.
+- **Recovery.** Encrypted provider tokens can be re-keyed without downtime; backups are daily
+  and tested; retention is enforced daily (RUNBOOK.md).
+- **Privacy notice and terms** (`/privacy`, `/terms`) describe exactly what is stored, why, for
+  how long, who else is involved and how users stay in control. The operator must add their
+  identity and contact details and have them reviewed before a public launch.
+
 ## Repository and supply-chain practices (implemented)
 
 - `.env` is git-ignored. `.env.example` contains only placeholders. Provider credentials are read

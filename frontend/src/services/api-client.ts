@@ -104,7 +104,10 @@ export async function apiFetch<T>(
   }
   if (response.status === 204) return undefined as T;
 
-  const data: unknown = await response.json();
+  // 202 Accepted (e-mail requests, error reports) may come without a body.
+  const text = await response.text();
+  if (!text) return undefined as T;
+  const data: unknown = JSON.parse(text);
   if (!schema) return data as T;
   const parsed = schema.safeParse(data);
   if (!parsed.success) {

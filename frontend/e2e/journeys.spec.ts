@@ -1,6 +1,6 @@
 import { expect, test as base } from "@playwright/test";
 
-import { MockApi, TRACKS } from "./support/mock-api";
+import { MockApi, RESET_TOKEN, TRACKS, VERIFY_TOKEN } from "./support/mock-api";
 
 /**
  * Critical user journeys (Milestone 4): register, onboard, sign in and out, the dashboard,
@@ -493,4 +493,112 @@ test("create a playlist from a prompt, regenerate it and save it", async ({
   await expect
     .poll(() => [...api.playlists.values()].map((p) => p.collection))
     .toEqual(["custom"]);
+});
+
+// --- Milestone 7: account recovery, verification, legal pages, safe redirects -----------------
+
+test("forgot password: e-mailed link, new password, sign in", async ({
+  page,
+  api,
+}) => {
+  api.onboarded = true;
+  await page.goto("/login");
+  await page.getByRole("link", { name: "Forgot password?" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Forgot your password?" }),
+  ).toBeVisible();
+  await page.getByLabel("E-mail").fill(api.email);
+  await page.getByRole("button", { name: "Send reset link" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Check your inbox" }),
+  ).toBeVisible();
+  expect(api.mail).toEqual([{ kind: "password_reset", to: api.email }]);
+
+  await page.goto(`/reset-password?token=${RESET_TOKEN}`);
+  // The token leaves the address bar as soon as the page has read it.
+  await expect(page).toHaveURL(/\/reset-password$/);
+  await page
+    .getByLabel("New password", { exact: true })
+    .fill("a fresh passphrase");
+  await page.getByLabel("Confirm new password").fill("a fresh passphrase");
+  await page.getByRole("button", { name: "Set new password" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Password changed" }),
+  ).toBeVisible();
+  expect(api.password).toBe("a fresh passphrase");
+
+  await page.getByRole("link", { name: "Sign in" }).click();
+  await page.getByLabel("E-mail").fill(api.email);
+  await page.getByLabel("Password").fill("a fresh passphrase");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/home$/);
+
+  // The link works once.
+  await page.goto(`/reset-password?token=${RESET_TOKEN}`);
+  await page
+    .getByLabel("New password", { exact: true })
+    .fill("another passphrase");
+  await page.getByLabel("Confirm new password").fill("another passphrase");
+  await page.getByRole("button", { name: "Set new password" }).click();
+  await expect(
+    page.getByRole("heading", { name: "This link no longer works" }),
+  ).toBeVisible();
+});
+
+test("confirm the e-mail address, and ask for a new link from settings", async ({
+  page,
+  api,
+}) => {
+  await api.signIn();
+  await page.goto("/settings");
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByText("Address not confirmed yet.")).toBeVisible();
+  await page.getByRole("button", { name: "Send confirmation link" }).click();
+  await expect(page.getByRole("button", { name: "Link sent" })).toBeDisabled();
+  expect(api.mail).toEqual([{ kind: "email_verification", to: api.email }]);
+
+  await page.goto(`/verify-email?token=${VERIFY_TOKEN}`);
+  await expect(
+    page.getByRole("heading", { name: "E-mail address confirmed" }),
+  ).toBeVisible();
+  await page.goto("/settings");
+  await expect(page.getByText(/Address\s+confirmed/)).toBeVisible();
+
+  await page.goto("/verify-email?token=not-a-valid-token-000000");
+  await expect(
+    page.getByRole("heading", { name: "This link no longer works" }),
+  ).toBeVisible();
+});
+
+test("privacy notice and terms are public and linked from registration", async ({
+  page,
+}) => {
+  await page.goto("/register");
+  const privacy = page.getByRole("link", { name: "privacy notice" });
+  await expect(privacy).toHaveAttribute("href", "/privacy");
+  await page.goto("/privacy");
+  await expect(
+    page.getByRole("heading", { name: "Privacy notice", level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your choices" }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Legal" })
+    .getByRole("link", { name: "Terms" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Terms of use", level: 1 }),
+  ).toBeVisible();
+});
+
+test("sign-in never redirects to another site", async ({ page, api }) => {
+  api.onboarded = true;
+  // A backslash: browsers read "/\evil.example" as "//evil.example", another site.
+  await page.goto(`/login?next=${encodeURIComponent("/\\evil.example")}`);
+  await page.getByLabel("E-mail").fill(api.email);
+  await page.getByLabel("Password").fill(api.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/home$/);
+  expect(new URL(page.url()).hostname).not.toContain("evil");
 });

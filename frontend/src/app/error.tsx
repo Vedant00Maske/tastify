@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
+import { reportError } from "@/lib/report-error";
 
 /** Last-resort boundary: an unexpected rendering error anywhere below the root layout. */
 export default function GlobalError({
@@ -16,6 +17,7 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error(error);
+    reportError(error, "render");
   }, [error]);
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-5 px-4 text-center">

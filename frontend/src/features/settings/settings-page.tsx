@@ -73,6 +73,53 @@ const nameSchema = z.object({
   display_name: z.string().trim().max(80, "Use at most 80 characters"),
 });
 
+/** Whether the sign-in address is confirmed; unconfirmed users can ask for a new link. */
+function EmailVerification({ verified }: { verified: boolean }) {
+  const resend = useMutation({
+    mutationFn: auth.resendVerification,
+    onSuccess: () =>
+      toast.success(
+        "Confirmation link sent. Check your inbox (and spam folder).",
+      ),
+    onError: (e) =>
+      toast.error(
+        e instanceof ApiError && e.status === 503
+          ? "E-mail is not available right now. Try again later."
+          : e instanceof ApiError && e.status === 429
+            ? "Several links were sent already. Wait an hour, then try again."
+            : errorText(e),
+      ),
+  });
+  if (verified) {
+    return (
+      <p className="-mt-2 flex items-center gap-2 text-support text-fg-secondary">
+        <ShieldCheck className="size-4 text-success" aria-hidden /> Address
+        confirmed. You can reset your password by e-mail.
+      </p>
+    );
+  }
+  return (
+    <div className="-mt-2 flex flex-col gap-3 rounded-card border border-warning/30 bg-warning/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-support">
+        <span className="font-semibold">Address not confirmed yet.</span>{" "}
+        <span className="text-fg-secondary">
+          Confirm it so you can always recover your account.
+        </span>
+      </p>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        disabled={resend.isPending || resend.isSuccess}
+        onClick={() => resend.mutate()}
+      >
+        {resend.isPending ? <Spinner /> : null}
+        {resend.isSuccess ? "Link sent" : "Send confirmation link"}
+      </Button>
+    </div>
+  );
+}
+
 function AccountCard() {
   const me = useMe();
   const update = useUpdateAccount();
@@ -108,6 +155,9 @@ function AccountCard() {
             disabled
           />
         </Field>
+        {me.data ? (
+          <EmailVerification verified={me.data.email_verified} />
+        ) : null}
         <Field
           id="account-name"
           label="Name"
@@ -572,6 +622,23 @@ function PrivacyCard({ preferences }: { preferences: Preferences }) {
             </a>
           </Button>
         </div>
+        <p className="text-support text-fg-secondary">
+          What is stored, why and for how long:{" "}
+          <a
+            href="/privacy"
+            className="font-semibold text-accent hover:underline"
+          >
+            privacy notice
+          </a>{" "}
+          and{" "}
+          <a
+            href="/terms"
+            className="font-semibold text-accent hover:underline"
+          >
+            terms
+          </a>
+          .
+        </p>
       </div>
     </Card>
   );

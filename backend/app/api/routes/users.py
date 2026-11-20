@@ -11,7 +11,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.limits import limit
 from app.core.database import get_db_session
+from app.domains.auth import rate_limit
 from app.domains.auth.dependencies import CurrentUser, clear_session_cookie
 from app.domains.auth.schemas import AccountDeleteIn, MeOut, MeUpdate
 from app.domains.auth.service import AuthService, InvalidCredentialsError, me
@@ -58,7 +60,11 @@ async def update_me(session: Session, user: CurrentUser, update: MeUpdate) -> Me
     return me(user)
 
 
-@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[limit(rate_limit.PASSWORD_CONFIRM_PER_USER, per="user")],
+)
 async def delete_me(
     response: Response, session: Session, user: CurrentUser, data: AccountDeleteIn
 ) -> None:
@@ -71,7 +77,7 @@ async def delete_me(
     clear_session_cookie(response)
 
 
-@router.get("/export")
+@router.get("/export", dependencies=[limit(rate_limit.DATA_EXPORT_PER_USER, per="user")])
 async def export_me(session: Session, user: CurrentUser) -> Response:
     """Everything TASTIFY stores about the user, as a JSON download (spec §12.4)."""
     data = await export_user_data(session, user)

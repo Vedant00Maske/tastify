@@ -16,7 +16,7 @@ This plan supersedes the milestone numbering of the original §16 below, which i
 | 4 – Complete User Application | Authentication, onboarding, discovery dashboard, playlists, feedback, personalized categories | Done (pending review) |
 | 5 – Music Platform Integrations | ListenBrainz, MusicBrainz, Spotify and YouTube integrations, subject to API permissions | Done (pending review) |
 | 6 – Advanced Recommendation Intelligence | Context-aware ranking, cold-start improvements, natural-language playlists, experimentation, optimization | Done (pending review) |
-| 7 – Production Hardening | Security audits, performance, scalability, observability, deployment, data recovery | Planned |
+| 7 – Production Hardening | Security audits, performance, scalability, observability, deployment, data recovery | Done (pending review) |
 | 8 – Public Beta and Growth | Real users, feedback collection, A/B testing, model improvement, product analytics | Planned |
 
 ### Milestone 1 deliverables
@@ -104,7 +104,7 @@ analytics, settings) whose recommendations respond to what they like, save and s
       Vitest component and logic tests; Playwright journeys (register, onboarding, login, dashboard,
       feedback, discovery, moods, playlists incl. keyboard reordering, taste, search, settings,
       offline, account deletion, logout) against a mocked API
-- [ ] Password reset and e-mail verification: need an e-mail service (moved to Milestone 7)
+- [x] Password reset and e-mail verification: delivered in Milestone 7 (needs an e-mail service)
 
 ### Milestone 5 deliverables
 
@@ -147,6 +147,36 @@ chosen (ADR-019, reports/context-benchmark.md).
       user's first few interactions (declared genres and artists already seed first mixes, M3/M4)
 - [x] Optimization: profiled for-you; popularity and genre-profile caches keyed by immutable model
       versions; context scored on the best 250 candidates (773 ms -> about 530 ms in process)
+
+### Milestone 7 deliverables
+
+Acceptance criteria (spec §16 production release): the production environment is available,
+critical user journeys pass, no known critical security vulnerabilities, monitoring and error
+reporting work, user data deletion works (ADR-020, RUNBOOK.md).
+
+- [x] Security audit and tests (spec §11.6): route sweep, object references, injection, XSS,
+      CSRF, forwarded-address spoofing, token leakage; 11 findings fixed, none critical
+      ([report](reports/security-audit.md)); security headers and CSP; production refuses
+      unsafe settings
+- [x] Password reset and e-mail verification: single-use hashed links, no account enumeration,
+      SMTP through the worker with retries, pages in the web app, Mailpit locally
+- [x] Performance: load test against the production stack; response cache and precomputed
+      mixes; batched vector search; indexed track search; cached genre rankings; single-threaded
+      BLAS per process: 20 users, about 54 requests/s, every endpoint's p95 below 500 ms
+      ([report](reports/load-test.md))
+- [x] Scalability: stateless replicas behind Caddy; recommendations on their own service;
+      Argon2 off the event loop; pool sizing; statement timeouts; `503` on overload
+- [x] Observability: JSON logs with request ids and secret masking; Prometheus metrics for every
+      spec §15 application and recommendation metric; 11 alerts; Grafana dashboard; error
+      tracking (Sentry-compatible) for the API, worker and web app
+- [x] Deployment: production compose stack (HTTPS, read-only non-root containers), CI smoke test
+      of that stack on every change, tagged releases to GHCR, approved deploys over SSH,
+      rollback
+- [x] Data recovery: daily verified backups with an age alert, restore and restore-test
+      scripts, token key rotation, daily retention job, catalogue snapshots for new deployments,
+      runbook with RPO/RTO
+- [x] Privacy documentation: privacy notice and terms pages (operator details to be added
+      before launch), linked from registration and settings
 
 ## 16. Development Roadmap
 

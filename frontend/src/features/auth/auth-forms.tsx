@@ -39,14 +39,26 @@ export const registerSchema = z
     path: ["confirm"],
   });
 
-/** Only same-site paths are followed after login (no open redirects). */
+/**
+ * Only same-site paths are followed after login (no open redirects). Browsers treat "\\" like
+ * "/" in URLs, so "/\\evil.example" would mean "//evil.example": anything with a backslash,
+ * control character or a second leading slash is refused, and the result must stay on this
+ * origin when resolved.
+ */
 export function safeNext(next: string | null, fallback = "/home"): string {
-  return next && next.startsWith("/") && !next.startsWith("//")
-    ? next
-    : fallback;
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return fallback;
+  if (/[\\\u0000-\u001f\u007f]/.test(next)) return fallback;
+  try {
+    const base = "https://tastify.invalid";
+    const resolved = new URL(next, base);
+    if (resolved.origin !== base) return fallback;
+    return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  } catch {
+    return fallback;
+  }
 }
 
-function FormError({ error }: { error: unknown }) {
+export function FormError({ error }: { error: unknown }) {
   if (!error) return null;
   const message =
     error instanceof ApiError
@@ -64,7 +76,7 @@ function FormError({ error }: { error: unknown }) {
   );
 }
 
-function AuthCard({
+export function AuthCard({
   title,
   subtitle,
   children,
@@ -126,6 +138,12 @@ export function LoginForm() {
             {...form.register("password")}
           />
         </Field>
+        <Link
+          href="/forgot-password"
+          className="-mt-1 self-end text-support font-semibold text-accent hover:underline"
+        >
+          Forgot password?
+        </Link>
         <FormError error={login.error} />
         <Button
           type="submit"
@@ -240,9 +258,24 @@ export function RegisterForm() {
             {...form.register("accept_terms")}
           />
           <span>
-            I accept the terms and the privacy notice: TASTIFY stores what I
-            play, like and skip to personalize my recommendations, and I can
-            export or delete it at any time.
+            I accept the{" "}
+            <Link
+              href="/terms"
+              target="_blank"
+              className="font-semibold text-accent hover:underline"
+            >
+              terms
+            </Link>{" "}
+            and the{" "}
+            <Link
+              href="/privacy"
+              target="_blank"
+              className="font-semibold text-accent hover:underline"
+            >
+              privacy notice
+            </Link>
+            : TASTIFY stores what I play, like and skip to personalize my
+            recommendations, and I can export or delete it at any time.
           </span>
         </label>
         {errors.accept_terms ? (

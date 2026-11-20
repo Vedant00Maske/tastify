@@ -40,12 +40,21 @@ def _key(raw: str | None) -> bytes:
 
 
 class TokenCipher:
-    def __init__(self, key: bytes) -> None:
+    """Encrypts with the current key; decrypts with the current key or any previous one, so the
+    key can be rotated without downtime (INTEGRATIONS_TOKEN_PREVIOUS_KEYS, then
+    `python -m app.cli rotate-token-key`)."""
+
+    def __init__(self, key: bytes, previous: list[bytes] | None = None) -> None:
         self._aead = AESGCM(key)
+        self._readers = [self._aead, *(AESGCM(k) for k in previous or [])]
 
     @classmethod
     def from_settings(cls) -> "TokenCipher":
-        return cls(_key(get_settings().integrations_token_key))
+        settings = get_settings()
+        return cls(
+            _key(settings.integrations_token_key),
+            [_key(raw) for raw in settings.integrations_token_previous_keys],
+        )
 
     @staticmethod
     def _context(user_id: uuid.UUID, provider: str) -> bytes:
@@ -62,12 +71,28 @@ class TokenCipher:
             raise TokenDecryptionError(f"unknown token format {version!r}")
         try:
             raw = base64.b64decode(payload, validate=True)
-            plain = self._aead.decrypt(
-                raw[:NONCE_BYTES], raw[NONCE_BYTES:], self._context(user_id, provider)
-            )
-        except (binascii.Error, ValueError, InvalidTag) as error:
+        except (binascii.Error, ValueError) as error:
             raise TokenDecryptionError("stored token cannot be decrypted") from error
-        return plain.decode()
+        for reader in self._readers:
+            try:
+                plain = reader.decrypt(
+                    raw[:NONCE_BYTES], raw[NONCE_BYTES:], self._context(user_id, provider)
+                )
+            except (ValueError, InvalidTag):
+                continue
+            return plain.decode()
+        raise TokenDecryptionError("stored token cannot be decrypted")
+
+    def is_current(self, value: str, user_id: uuid.UUID, provider: str) -> bool:
+        """Whether `value` is encrypted with the current key (rotation progress)."""
+        _, _, payload = value.partition(":")
+        try:
+            raw = base64.b64decode(payload, validate=True)
+            context = self._context(user_id, provider)
+            self._aead.decrypt(raw[:NONCE_BYTES], raw[NONCE_BYTES:], context)
+        except (binascii.Error, ValueError, InvalidTag):
+            return False
+        return True
 
 
 def configured() -> bool:

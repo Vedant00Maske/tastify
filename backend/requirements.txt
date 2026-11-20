@@ -12,8 +12,11 @@ httpx==0.28.1
 # Personalized serving: ALS fold-in, tree-ensemble ranking and MMR (Milestone 3).
 numpy==2.4.6
 pgvector==0.5.1
+# Metrics (Prometheus) and error tracking (Sentry-compatible), Milestone 7.
+prometheus-client==0.26.0
 pydantic==2.14.3
 pydantic-settings==2.16.3
 redis==8.1.0
+sentry-sdk[fastapi,celery]==2.74.0
 SQLAlchemy[asyncio]==2.1.8
 uvicorn[standard]==0.54.0

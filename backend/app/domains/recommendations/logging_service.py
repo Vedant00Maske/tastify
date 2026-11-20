@@ -11,6 +11,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import metrics
 from app.domains.recommendations.experiments import (
     NEGATIVE_FEEDBACK,
     POSITIVE_FEEDBACK,
@@ -86,6 +87,8 @@ async def record(
     latency_ms: int | None = None,
 ) -> None:
     """Log one response and its items (spec §6.2). Logging never breaks a response."""
+    metrics.RECOMMENDATIONS_SERVED.labels(category, response.model_version[:64]).inc()
+    metrics.RECOMMENDATION_ITEMS.labels(category).inc(len(response.recommendations))
     try:
         session.add(
             RecommendationRequest(

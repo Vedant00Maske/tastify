@@ -8,8 +8,17 @@ import { NextResponse, type NextRequest } from "next/server";
  *    session on every request; this only avoids rendering a page that would immediately 401.
  */
 const SESSION_COOKIE = "tastify_session";
-const AUTH_PAGES = ["/login", "/register"];
-const PUBLIC_PAGES = new Set(["/", ...AUTH_PAGES]);
+// Signed-in visitors are sent home from these.
+const AUTH_PAGES = ["/login", "/register", "/forgot-password"];
+// Reachable signed in or not: e-mailed links (the token is the proof) and the legal pages.
+const PUBLIC_PAGES = new Set([
+  "/",
+  ...AUTH_PAGES,
+  "/reset-password",
+  "/verify-email",
+  "/privacy",
+  "/terms",
+]);
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

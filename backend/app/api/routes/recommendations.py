@@ -5,10 +5,14 @@ import uuid
 from typing import Annotated
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Response, status
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.limits import limit
 from app.core.database import get_db_session
+from app.core.redis import get_redis
+from app.domains.auth import rate_limit
 from app.domains.auth.dependencies import CurrentUser, optional_user
 from app.domains.recommendations import logging_service
 from app.domains.recommendations.custom import (
@@ -28,6 +32,11 @@ from app.domains.recommendations.personalized import (
     RequestContext,
 )
 from app.domains.recommendations.ranking import DEFAULT_MAX_PER_ARTIST
+from app.domains.recommendations.response_cache import (
+    ResponseCache,
+    for_you_request,
+    hidden_gems_request,
+)
 from app.domains.recommendations.schemas import (
     BecauseYouListenedResponse,
     PersonalizedResponse,
@@ -75,6 +84,18 @@ def request_context(
 
 
 Context = Annotated[RequestContext, Depends(request_context)]
+
+
+def get_response_cache(redis: Annotated[Redis, Depends(get_redis)]) -> ResponseCache:
+    return ResponseCache(redis)
+
+
+Cache = Annotated[ResponseCache, Depends(get_response_cache)]
+
+
+def _has_items(response: PersonalizedResponse) -> bool:
+    # An empty mix may only mean the catalogue or models are not loaded yet: compute again.
+    return bool(response.recommendations)
 
 
 def _http_error(error: RecommendationError) -> HTTPException:
@@ -161,6 +182,8 @@ async def for_you(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     user: CurrentUser,
     context: Context,
+    cache: Cache,
+    http: Response,
     limit: Limit = 25,
     exploration: Annotated[
         ExplorationMode | None,
@@ -172,17 +195,28 @@ async def for_you(
     the current session. Logged, and assigned to the running for-you experiment if any."""
     started = time.perf_counter()
     assignment = await logging_service.assignment_for(session, "for_you", user.id)
-    try:
-        response = await PersonalizedRecommendationService(session).for_you(
-            user.id,
-            limit,
-            exploration,
-            request_context=context,
-            params=assignment.params if assignment else None,
+    params = assignment.params if assignment else None
+
+    async def compute() -> PersonalizedResponse:
+        computed = await PersonalizedRecommendationService(session).for_you(
+            user.id, limit, exploration, request_context=context, params=params
         )
         await session.commit()
+        return computed
+
+    try:
+        response = await cache.get_or_compute(
+            session,
+            "for_you",
+            user.id,
+            for_you_request(limit, exploration, params, context.zone_name),
+            PersonalizedResponse,
+            compute,
+            keep=_has_items,
+        )
     except RecommendationError as error:
         raise _http_error(error) from error
+    http.headers["X-Cache"] = "hit" if cache.last_hit else "miss"
     if assignment:
         response = response.model_copy(
             update={"experiment": assignment.experiment, "variant": assignment.variant}
@@ -204,17 +238,33 @@ async def hidden_gems(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     user: CurrentUser,
     context: Context,
+    cache: Cache,
+    http: Response,
     limit: Limit = 20,
 ) -> PersonalizedResponse:
     """Lesser-known tracks that match the user's taste, mostly by artists new to them."""
     started = time.perf_counter()
-    try:
-        response = await PersonalizedRecommendationService(session).for_you(
+
+    async def compute() -> PersonalizedResponse:
+        computed = await PersonalizedRecommendationService(session).for_you(
             user.id, limit, collection="hidden_gems", request_context=context
         )
         await session.commit()
+        return computed
+
+    try:
+        response = await cache.get_or_compute(
+            session,
+            "hidden_gems",
+            user.id,
+            hidden_gems_request(limit, context.zone_name),
+            PersonalizedResponse,
+            compute,
+            keep=_has_items,
+        )
     except RecommendationError as error:
         raise _http_error(error) from error
+    http.headers["X-Cache"] = "hit" if cache.last_hit else "miss"
     await logging_service.record(
         session,
         response,
@@ -244,20 +294,36 @@ async def surprise(
 async def because_you_listened(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     user: CurrentUser,
+    cache: Cache,
+    http: Response,
     seeds: Annotated[int, Query(ge=1, le=5)] = 2,
     limit: Limit = 10,
 ) -> BecauseYouListenedResponse:
     """For the user's strongest recent tracks: what listeners of each also play."""
-    try:
+
+    async def compute() -> BecauseYouListenedResponse:
         sections = await PersonalizedRecommendationService(session).because_you_listened(
             user.id, seeds, limit
         )
         return BecauseYouListenedResponse(sections=sections)
+
+    try:
+        result = await cache.get_or_compute(
+            session,
+            "because_you_listened",
+            user.id,
+            {"seeds": seeds, "limit": limit},
+            BecauseYouListenedResponse,
+            compute,
+            keep=lambda response: bool(response.sections),
+        )
     except RecommendationError as error:
         raise _http_error(error) from error
+    http.headers["X-Cache"] = "hit" if cache.last_hit else "miss"
+    return result
 
 
-@router.post("/custom")
+@router.post("/custom", dependencies=[limit(rate_limit.PROMPT_PER_CLIENT)])
 async def custom_playlist(
     data: CustomIn,
     session: Annotated[AsyncSession, Depends(get_db_session)],

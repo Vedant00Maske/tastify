@@ -174,6 +174,25 @@ Tooling set up in Milestone 0:
   A and AA) on every page at 1440 and 390 px; `e2e/layout.spec.ts` fails if any page scrolls
   sideways at 360, 768, 1024 or 1920 px and keeps screenshots in `test-results/`. Session expiry
   and the sliding refresh are covered in `test_auth_api.py`.
+- Milestone 7. `backend/tests/integration/security/test_security.py` (spec §11.6): every
+  operation in the OpenAPI schema is public by an explicit list or answers `401`; forged
+  sessions; a stranger's ten playlist operations all `404`; SQL injection payloads; stored
+  script payloads returned as data; CSRF; forwarded-address spoofing; password confirmation
+  limits; no secrets in logs. `backend/tests/integration/test_hardening.py`: headers and request
+  ids, body limits (declared and streamed), generic `500`s, metrics and their token, atomic rate
+  limits, error reports, unsafe production settings refused, the retention job.
+  `users/test_recovery_api.py`: verification and reset links (single use, expiry, replacement,
+  address changes, sessions revoked, no account enumeration, limits, mail unavailable).
+  `users/test_response_cache.py`: cache hits with fresh request ids, invalidation by feedback and
+  preferences, isolation between users, precompute. `unit/test_milestone7_logic.py`: log
+  redaction and JSON format, request ids, token key rotation, e-mail construction and SMTP
+  delivery. Frontend: `safeNext` against backslash and control-character redirects, the error
+  reporter, empty `202` bodies; E2E journeys for password reset, address verification, the legal
+  pages and redirect safety, with the new pages in the accessibility and layout checks.
+- Deployment (Milestone 7). `scripts/smoke_test.py` exercises a running deployment through the
+  edge proxy, including e-mail journeys through the real worker and Mailpit;
+  `scripts/loadtest.py` is the load test ([report](reports/load-test.md));
+  `infrastructure/backup/verify.sh` is the restore test.
 - Milestone 6. `backend/tests/unit/test_milestone6_logic.py`: prompt reading (genres, moods,
   artists, exclusions, tempo, era, popularity), stable weighted assignment, Wilson intervals,
   the two-proportion test and verdicts, session and daypart fits.
@@ -220,3 +239,6 @@ Every push to `main` and every pull request runs:
 - Playwright E2E against the production build
 - the secret scan and dependency audits
 - production Docker image builds
+- the deployment smoke test (`deploy-smoke`): shellcheck, Caddy, Prometheus and Alertmanager
+  configuration checks, the production stack started from the commit, `scripts/smoke_test.py`,
+  a backup and restore test, and a check that unsafe production settings are refused

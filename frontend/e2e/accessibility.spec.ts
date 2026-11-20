@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test as base, type Page } from "@playwright/test";
 
-import { MockApi } from "./support/mock-api";
+import { MockApi, RESET_TOKEN, VERIFY_TOKEN } from "./support/mock-api";
 
 /**
  * Automated WCAG 2.1 AA checks (axe-core) on every page, in the dark theme at desktop and phone
@@ -32,7 +32,15 @@ async function audit(page: Page) {
   expect(summary, JSON.stringify(summary, null, 2)).toEqual([]);
 }
 
-const SIGNED_OUT = ["/login", "/register"];
+const SIGNED_OUT = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  `/reset-password?token=${RESET_TOKEN}`,
+  `/verify-email?token=${VERIFY_TOKEN}`,
+  "/privacy",
+  "/terms",
+];
 const SIGNED_IN = [
   "/home",
   "/discover",

@@ -53,6 +53,24 @@ class PasswordChangeIn(BaseModel):
     new_password: str = Field(max_length=MAX_LENGTH)
 
 
+class PasswordResetRequestIn(BaseModel):
+    email: str = Field(max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, value: str) -> str:
+        return _email(value)
+
+
+class PasswordResetIn(BaseModel):
+    token: str = Field(min_length=20, max_length=128)
+    new_password: str = Field(max_length=MAX_LENGTH)
+
+
+class EmailVerifyIn(BaseModel):
+    token: str = Field(min_length=20, max_length=128)
+
+
 class AccountDeleteIn(BaseModel):
     password: str = Field(max_length=MAX_LENGTH)
 
@@ -63,6 +81,7 @@ class MeOut(BaseModel):
     display_name: str | None
     created_at: datetime
     onboarding_completed: bool
+    email_verified: bool
 
 
 class MeUpdate(BaseModel):

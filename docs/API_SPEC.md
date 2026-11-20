@@ -203,7 +203,32 @@ request; it is reported here. `strategy` is `personalized`, `cold_start` or `art
 | `POST /api/v1/playlists/{id}/export` | Implemented (M5) | `{provider}`: create or update the playlist on a connected provider (private). Retry-safe; returns exported and unmatched counts and the remote URL. `409` not connected or reconnect needed, `429` rate limit or quota, `502` provider failure. |
 | `GET /api/v1/playlists/{id}/exports` | Implemented (M5) | The playlist's exports, one per provider. |
 | `POST /api/v1/recommendations/custom` | Implemented (M6) | `{prompt, limit?, exploration_level?, exclude_previously_heard?, exclude?}`: a playlist from a prompt (spec §9, FR-016). Returns the recommendations with evidence-based reasons, `interpretation` (genres, moods, artists, exclusions, tempo, energy, era, popularity, exploration, ignored words, summary) and `personalized`. Public; personalized and logged when signed in. `422` (`prompt_not_understood`, with the ignored words) when nothing matches the catalogue. |
+| `POST /api/v1/auth/password/forgot` | Implemented (M7) | `{email}` → `202`, the same answer whether or not an account uses the address; a reset link is e-mailed to real accounts (at most 3 an hour per address, silently). `503` (`email_unavailable`) when e-mail is not configured. |
+| `POST /api/v1/auth/password/reset` | Implemented (M7) | `{token, new_password}` → `204`: the password is set and every session signed out (the cookie is cleared). `400` for an invalid, used or expired link; `422` for a weak password (the link stays usable). |
+| `POST /api/v1/auth/email/verify` | Implemented (M7) | `{token}` → `204`: the address is confirmed (signed in or not). `400` for an invalid, used or expired link, or one sent to an earlier address. |
+| `POST /api/v1/auth/email/verification` | Implemented (M7) | Signed in: e-mail a new confirmation link (`202`); `409` when already confirmed, `503` without e-mail, at most 5 an hour. A link is also sent at registration. |
+| `POST /api/v1/client-errors` | Implemented (M7) | `{kind: render \| unhandled \| chunk, message (≤ 500), path (no query string), digest?, release?}` → `202`: a browser error, logged, counted and forwarded to error tracking. Anonymous, 30 a minute per client. |
+| `GET /metrics` | Implemented (M7) | Prometheus metrics of the process. Outside `/api/v1`: never routed by the public proxy. Optional `Authorization: Bearer <METRICS_TOKEN>`. |
 | All other endpoints above  | Planned     | Playlist export to file formats and further integrations: later milestones (see ROADMAP.md). |
+
+**Milestone 7 additions to every endpoint** (ADR-020).
+
+- Every response carries `X-Request-ID` (the caller's, when it is 8-64 plain characters, or a
+  new one); error responses and logs carry the same id. Security headers: `nosniff`, framing
+  denied, `no-referrer`, `Cache-Control: no-store` unless a route sets its own, a
+  `default-src 'none'` CSP, HSTS when deployed.
+- `413` for bodies over 1 MiB; `503` with `Retry-After` when the service is overloaded (every
+  database connection busy); unexpected errors are `500` with `{"detail", "request_id"}` only.
+- Rate limits (`429` with `Retry-After`), per client address or per user: search 120/min,
+  prompt playlists 30/min, MusicBrainz search 30/min, imports 10/h, exports 30/h, data export
+  10/h, feedback 600/min, password confirmations (change, deletion) 10 per 15 min, plus the
+  Milestone 4 sign-in and registration limits.
+- `GET /users/me` (and every `MeOut`) includes `email_verified`; the data export includes
+  `email_verified_at`.
+- `GET /recommendations/for-you`, `/hidden-gems` and `/because-you-listened` may be served from
+  the per-user cache: `X-Cache: hit | miss`. A cached response has a new `request_id`; it is
+  never older than the user's latest feedback, preferences or model versions.
+- Interactive docs (`/api/v1/docs`, `/api/v1/openapi.json`) are off in production.
 
 **Milestone 6 additions to existing endpoints.**
 

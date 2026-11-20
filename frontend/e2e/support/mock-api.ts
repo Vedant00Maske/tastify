@@ -10,6 +10,8 @@ const uuid = (n: number) =>
   `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
 const USER_ID = uuid(1);
 export const SESSION_COOKIE = "tastify_session";
+export const RESET_TOKEN = "reset-token-0123456789abcdef";
+export const VERIFY_TOKEN = "verify-token-0123456789abcdef";
 
 interface Track {
   id: string;
@@ -129,6 +131,11 @@ export class MockApi {
   email = "listener@example.com";
   password = "a long enough password";
   displayName: string | null = "Listener";
+  // Milestone 7: e-mail verification, reset links and error reports.
+  emailVerified = false;
+  resetUsed = false;
+  mail: { kind: string; to: string }[] = [];
+  clientErrors: unknown[] = [];
   preferences = {
     exploration_mode: "balanced" as string | null,
     personalization_enabled: true,
@@ -192,6 +199,7 @@ export class MockApi {
       display_name: this.displayName,
       created_at: "2026-11-01T10:00:00Z",
       onboarding_completed: this.onboarded,
+      email_verified: this.emailVerified,
     };
   }
 
@@ -328,6 +336,33 @@ export class MockApi {
       await this.context.clearCookies();
       return noContent();
     }
+    // Milestone 7: password reset and e-mail verification. Links carry RESET_TOKEN or
+    // VERIFY_TOKEN; any other token is invalid or used.
+    if (path === "/auth/password/forgot" && method === "POST") {
+      this.mail.push({ kind: "password_reset", to: body.email });
+      return noContent();
+    }
+    if (path === "/auth/password/reset" && method === "POST") {
+      if (body.token !== RESET_TOKEN || this.resetUsed)
+        return error(400, "This link is invalid or has expired");
+      if (String(body.new_password).length < 10)
+        return error(422, "must be at least 10 characters");
+      this.resetUsed = true;
+      this.password = body.new_password;
+      this.signedIn = false;
+      await this.context.clearCookies();
+      return noContent();
+    }
+    if (path === "/auth/email/verify" && method === "POST") {
+      if (body.token !== VERIFY_TOKEN)
+        return error(400, "This link is invalid or has expired");
+      this.emailVerified = true;
+      return noContent();
+    }
+    if (path === "/client-errors" && method === "POST") {
+      this.clientErrors.push(body);
+      return route.fulfill({ status: 202, body: "" });
+    }
 
     // Public catalogue and recommendation endpoints work signed out too.
     const isPublic =
@@ -337,6 +372,11 @@ export class MockApi {
     if (!this.signedIn && !isPublic) return error(401, "not signed in");
 
     // --- account ----------------------------------------------------------------------------
+    if (path === "/auth/email/verification" && method === "POST") {
+      if (this.emailVerified) return error(409, "already verified");
+      this.mail.push({ kind: "email_verification", to: this.email });
+      return route.fulfill({ status: 202, body: "" });
+    }
     if (path === "/users/me" && method === "GET") return json(this.me());
     if (path === "/users/me" && method === "PATCH") {
       if ("display_name" in body) this.displayName = body.display_name;

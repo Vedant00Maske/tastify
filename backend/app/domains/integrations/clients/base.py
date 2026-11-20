@@ -12,6 +12,8 @@ from typing import Any, Self
 
 import httpx
 
+from app.core import metrics
+
 logger = logging.getLogger(__name__)
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
@@ -60,6 +62,11 @@ class RateLimitedClient:
         self._retry_statuses = frozenset(retry_statuses)
         self._lock = asyncio.Lock()
         self._next_request_at = 0.0
+        # Metrics label: the provider's host (low cardinality, no paths or ids).
+        self._host = httpx.URL(base_url).host or "unknown"
+
+    def _count(self, outcome: str) -> None:
+        metrics.PROVIDER_REQUESTS.labels(self._host, outcome).inc()
 
     async def __aenter__(self) -> Self:
         return self
@@ -104,11 +111,19 @@ class RateLimitedClient:
             try:
                 response = await self._client.request(method, path, **kwargs)
             except httpx.TransportError as exc:
+                self._count("error")
                 if attempt == self._max_retries:
                     raise ProviderError(f"{method} {path} failed: {type(exc).__name__}") from exc
                 await self._sleep(min(60.0, 2.0**attempt))
                 continue
             self._respect_rate_limit_headers(response)
+            self._count(
+                "ok"
+                if response.status_code < 400
+                else "rate_limited"
+                if response.status_code == 429
+                else "error"
+            )
             if response.status_code in self._retry_statuses and attempt < self._max_retries:
                 wait = self._retry_after(response, attempt)
                 if self._max_wait is not None and wait > self._max_wait:

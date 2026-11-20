@@ -103,6 +103,7 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
             "status": user.status,
             "created_at": user.created_at,
             "terms_accepted_at": user.terms_accepted_at,
+            "email_verified_at": user.email_verified_at,
             "onboarding_completed_at": user.onboarding_completed_at,
             "last_login_at": user.last_login_at,
         },

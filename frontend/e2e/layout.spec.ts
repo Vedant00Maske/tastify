@@ -24,6 +24,7 @@ const PAGES = [
   "/search?q=ween",
   "/create",
   "/settings",
+  "/privacy",
 ];
 
 for (const width of [360, 768, 1024, 1920]) {

@@ -26,3 +26,4 @@ marked _Superseded_ and linked to the ADR that replaces it.
 | [ADR-017](ADR-017-authentication-and-user-application.md)   | Authentication and the user application: server sessions, same-origin proxy, honest playback | Accepted |
 | [ADR-018](ADR-018-music-platform-integrations.md)          | Music platform integrations: adapters, encrypted tokens, consented imports, retry-safe exports | Accepted |
 | [ADR-019](ADR-019-context-prompts-and-experiments.md)       | Advanced recommendation intelligence: evidence-based context, prompt playlists, online experiments | Accepted |
+| [ADR-020](ADR-020-production-hardening.md)                  | Production hardening: edge routing, replicas, caching, observability, backups, account recovery | Accepted |

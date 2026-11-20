@@ -3,7 +3,7 @@
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import ScalarSelect, Select, func, literal, select
+from sqlalchemy import ScalarSelect, Select, func, literal, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -128,16 +128,32 @@ class CatalogueRepository:
             func.similarity(Track.normalized_title, normalized),
             func.word_similarity(normalized, haystack),
         )
+        needle = literal(normalized)
+        # Candidates come only through the trigram indexes (Milestone 7: a condition on the
+        # concatenated "artist title" cannot use an index and scanned every track): tracks whose
+        # title matches the query or contains it as a word, and tracks of artists whose name
+        # matches or is contained. The same score then ranks just those candidates.
+        by_title = select(Track.id.label("id")).where(
+            Track.normalized_title.bool_op("%")(normalized)
+            | needle.bool_op("<%")(Track.normalized_title)
+        )
+        by_artist = (
+            select(Track.id.label("id"))
+            .join(Artist, Artist.id == Track.artist_id)
+            .where(
+                Artist.normalized_name.bool_op("%")(normalized)
+                | needle.bool_op("<%")(Artist.normalized_name)
+            )
+        )
+        candidates = union(by_title, by_artist).subquery()
         statement: Select[uuid.UUID] = (
             select(Track.id)
+            .join(candidates, candidates.c.id == Track.id)
             .join(Artist, Artist.id == Track.artist_id)
-            # `%` uses the trigram index on titles; `<%` matches the query inside "artist title".
-            .where(
-                Track.normalized_title.bool_op("%")(normalized)
-                | literal(normalized).bool_op("<%")(haystack)
-            )
+            # The original match rule, now evaluated on the candidates only.
+            .where(Track.normalized_title.bool_op("%")(normalized) | needle.bool_op("<%")(haystack))
             .where(score >= MIN_SEARCH_SIMILARITY)
-            .order_by(score.desc(), Track.title)
+            .order_by(score.desc(), Track.title, Track.id)
             .limit(limit)
         )
         ids = list((await self.session.scalars(statement)).all())

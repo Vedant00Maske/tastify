@@ -1,0 +1,80 @@
+# TASTIFY edge proxy (docker-compose.prod.yml; DEPLOYMENT.md, ADR-020).
+#
+# SITE_ADDRESS is the public domain (e.g. tastify.example.com): Caddy obtains and renews its
+# HTTPS certificate automatically and redirects HTTP to HTTPS. For a local or CI smoke test it
+# can be ":80" (plain HTTP, no certificate).
+#
+# Routing, all on one origin (first-party session cookie, no CORS):
+#   /api/v1/recommendations/*  -> recommender replicas (CPU-heavy ranking)
+#   /api/v1/*                  -> api replicas
+#   everything else            -> Next.js
+# /metrics is never routed: it goes to Next.js, which answers 404.
+
+{
+	# Certificates come from Let's Encrypt (no account e-mail needed; to receive expiry notices,
+	# add "email you@example.com" here).
+	# The client address Caddy passes on (X-Forwarded-For) is the real peer: Caddy is the edge
+	# and ignores any X-Forwarded-For a client sends, unless the peer is a trusted proxy
+	# (CADDY_TRUSTED_PROXIES, e.g. a CDN's ranges, or private_ranges behind a load balancer).
+	servers {
+		trusted_proxies static {$CADDY_TRUSTED_PROXIES:127.0.0.1/32}
+	}
+}
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	request_body {
+		max_size 2MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		-Server
+		-X-Powered-By
+	}
+
+	@recommendations path /api/v1/recommendations/*
+	handle @recommendations {
+		reverse_proxy {
+			dynamic a recommender 8000 {
+				refresh 5s
+			}
+			lb_policy least_conn
+			lb_try_duration 5s
+			fail_duration 10s
+			header_up X-Request-ID {http.request.uuid}
+		}
+	}
+
+	handle /api/v1/* {
+		reverse_proxy {
+			dynamic a api 8000 {
+				refresh 5s
+			}
+			lb_policy least_conn
+			lb_try_duration 5s
+			fail_duration 10s
+			header_up X-Request-ID {http.request.uuid}
+		}
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	log {
+		output stdout
+		# Query strings can carry search terms or tokens, headers carry cookies: log neither.
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp "\?.*" "?[redacted]"
+				request>headers>Cookie delete
+				request>headers>Authorization delete
+				resp_headers>Set-Cookie delete
+			}
+		}
+	}
+}

@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     auth,
     catalogue,
+    client_errors,
     health,
     integrations,
     interactions,
@@ -22,3 +23,4 @@ api_router.include_router(catalogue.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(playlists.router)
 api_router.include_router(integrations.router)
+api_router.include_router(client_errors.router)

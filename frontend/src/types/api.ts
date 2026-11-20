@@ -27,6 +27,7 @@ export const MeSchema = z.object({
   display_name: z.string().nullable(),
   created_at: z.string(),
   onboarding_completed: z.boolean(),
+  email_verified: z.boolean(),
 });
 export type Me = z.infer<typeof MeSchema>;
 

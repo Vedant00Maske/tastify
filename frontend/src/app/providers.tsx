@@ -7,14 +7,24 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import { OfflineBanner } from "@/components/feedback/offline-banner";
 import { hardNavigate, isLeaving } from "@/lib/navigation";
+import { listenForUnhandledErrors } from "@/lib/report-error";
 import { ApiError } from "@/services/api-client";
 
-const AUTH_PAGES = ["/login", "/register"];
+// Pages where a 401 is expected or irrelevant: never redirect from them to sign in.
+const AUTH_PAGES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/privacy",
+  "/terms",
+];
 
 function onUnauthorized(error: unknown) {
   if (!(error instanceof ApiError) || !error.isUnauthorized) return;
@@ -42,6 +52,7 @@ function makeClient() {
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(makeClient);
+  useEffect(() => listenForUnhandledErrors(), []);
   return (
     <QueryClientProvider client={client}>
       <MotionConfig reducedMotion="user">

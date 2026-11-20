@@ -1,0 +1,45 @@
+# Prometheus for TASTIFY (docker-compose.prod.yml, profile "monitoring"; DEPLOYMENT.md §15).
+# Every API and recommender replica is discovered through Docker's DNS (one A record per
+# replica) and scraped on its own, so per-process metrics add up correctly.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: api
+    dns_sd_configs:
+      - names: ["api"]
+        type: A
+        port: 8000
+        refresh_interval: 15s
+
+  - job_name: recommender
+    dns_sd_configs:
+      - names: ["recommender"]
+        type: A
+        port: 8000
+        refresh_interval: 15s
+
+  - job_name: worker
+    dns_sd_configs:
+      - names: ["worker"]
+        type: A
+        port: 9100
+        refresh_interval: 30s
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]

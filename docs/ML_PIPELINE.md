@@ -286,6 +286,15 @@ Ranking rules (candidate pool, popularity blend, artist cap, one version per son
 `backend/app/domains/recommendations/ranking.py` and are called by both the API and the evaluation
 (`tastify_ml/evaluation/recommenders.py`), so offline metrics describe the served ranking.
 
+## Pipelines and production (Milestone 7)
+
+The pipelines reuse the API's database settings but run without its statement timeout
+(`DB_STATEMENT_TIMEOUT_MS=0` unless set), since bulk loads legitimately run long. A new
+deployment receives the catalogue and models as a snapshot (`infrastructure/backup/catalogue.sh`,
+DEPLOYMENT.md "Loading the catalogue"); once it has users, the pipelines run against its
+database and publish new versions. After publishing, the API's caches follow automatically:
+every cache key includes the model versions.
+
 ## Context experiment (Milestone 6)
 
 `python -m tastify_ml context` asks whether time of day or the current session predicts what a

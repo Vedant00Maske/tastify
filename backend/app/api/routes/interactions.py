@@ -7,8 +7,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.limits import limit
+from app.api.routes.recommendations import Context
+from app.core import metrics
 from app.core.database import get_db_session
+from app.domains.auth import rate_limit
 from app.domains.auth.dependencies import CurrentUser
+from app.domains.recommendations.precompute import PrecomputeScheduler, get_precompute_scheduler
 from app.domains.users.events import EventType
 from app.domains.users.schemas import (
     FeedbackStates,
@@ -23,20 +28,34 @@ router = APIRouter(prefix="/interactions", tags=["interactions"])
 Session = Annotated[AsyncSession, Depends(get_db_session)]
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[limit(rate_limit.INTERACTIONS_PER_USER, per="user")],
+)
 async def record_interactions(
-    session: Session, user: CurrentUser, batch: InteractionBatch
+    session: Session,
+    user: CurrentUser,
+    batch: InteractionBatch,
+    context: Context,
+    precompute: Annotated[PrecomputeScheduler, Depends(get_precompute_scheduler)],
 ) -> InteractionsRecorded:
     """Record feedback and listening events (play, complete, replay, skip, like, dislike, save,
     playlist_add and their reversals). Idempotent per `client_event_id`; the taste profile is
     updated before the response."""
     try:
-        return await UserService(session).record_events(user.id, batch)
+        recorded = await UserService(session).record_events(user.id, batch)
     except InvalidReferenceError as error:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"message": str(error), "kind": error.kind, "values": error.values},
         ) from error
+    for event in batch.events:
+        attributed = "yes" if event.request_id is not None else "no"
+        metrics.FEEDBACK_EVENTS.labels(str(event.event_type), attributed).inc()
+    # The home page after this feedback is likely next: prepare its mixes in the background.
+    await precompute.schedule(user.id, context.zone_name)
+    return recorded
 
 
 @router.get("/history")

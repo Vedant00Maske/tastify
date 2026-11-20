@@ -6,7 +6,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.limits import limit
 from app.core.database import get_db_session
+from app.domains.auth import rate_limit
 from app.domains.catalogue.schemas import (
     ArtistDetail,
     ArtistSearchResponse,
@@ -32,7 +34,7 @@ def _not_found(entity: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{entity} not found")
 
 
-@router.get("/tracks/search")
+@router.get("/tracks/search", dependencies=[limit(rate_limit.SEARCH_PER_CLIENT)])
 async def search_tracks(
     catalogue: Catalogue,
     q: Annotated[str, Query(min_length=2, max_length=200, description="Artist and/or title")],
@@ -62,7 +64,7 @@ async def get_track(catalogue: Catalogue, track_id: uuid.UUID) -> TrackDetail:
     return track
 
 
-@router.get("/artists/search")
+@router.get("/artists/search", dependencies=[limit(rate_limit.SEARCH_PER_CLIENT)])
 async def search_artists(
     catalogue: Catalogue,
     q: Annotated[str, Query(min_length=2, max_length=200, description="Artist name")],

@@ -49,6 +49,18 @@ export const auth = {
   logout: () => apiFetch<void>("/auth/logout", { method: "POST" }),
   changePassword: (body: { current_password: string; new_password: string }) =>
     apiFetch<void>("/auth/password", { method: "POST", body }),
+  // Milestone 7: password reset and e-mail verification (links sent by e-mail).
+  forgotPassword: (email: string) =>
+    apiFetch<void>("/auth/password/forgot", {
+      method: "POST",
+      body: { email },
+    }),
+  resetPassword: (body: { token: string; new_password: string }) =>
+    apiFetch<void>("/auth/password/reset", { method: "POST", body }),
+  verifyEmail: (token: string) =>
+    apiFetch<void>("/auth/email/verify", { method: "POST", body: { token } }),
+  resendVerification: () =>
+    apiFetch<void>("/auth/email/verification", { method: "POST" }),
 };
 
 export const account = {

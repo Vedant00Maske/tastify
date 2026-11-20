@@ -65,6 +65,14 @@ describe("apiFetch", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("returns nothing for accepted requests without a body", async () => {
+    mockFetch(new Response("", { status: 202 }));
+
+    await expect(
+      apiFetch("/auth/email/verification", { method: "POST" }),
+    ).resolves.toBeUndefined();
+  });
+
   it("throws an ApiError with the API's message", async () => {
     mockFetch(
       Response.json({ detail: "invalid e-mail or password" }, { status: 401 }),

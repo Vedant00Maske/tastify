@@ -107,6 +107,6 @@ def test_affinities_are_strongest_first_with_deterministic_ties() -> None:
 def test_forwarded_for_is_trusted_only_from_configured_proxies(
     peer: str, proxies: list[str], trusted: bool
 ) -> None:
-    from app.api.routes.auth import _trusted
+    from app.api.limits import trusted_peer as _trusted
 
     assert _trusted(peer, proxies) is trusted

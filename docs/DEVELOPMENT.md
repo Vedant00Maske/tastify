@@ -39,8 +39,12 @@ File watching through Docker Desktop bind mounts is slow, so run only the infras
 and the apps on the host:
 
 ```bash
-docker compose up -d postgres redis
+docker compose up -d postgres redis mailpit
 ```
+
+Mailpit catches every e-mail the app sends (address verification, password reset): open
+http://127.0.0.1:8025. `.env` points the backend at it (`SMTP_HOST=127.0.0.1`, `SMTP_PORT=1025`,
+`SMTP_SECURITY=none`; see `.env.example`).
 
 **Backend**
 
@@ -53,9 +57,18 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-**Worker.** Celery's default pool does not support Windows. Either run the worker in Docker
-(`docker compose up -d worker`), or on the host use
-`celery -A app.workers.celery_app:celery_app worker --pool=solo --loglevel=INFO`.
+**Worker.** E-mail delivery and the precomputed home-page mixes run in the Celery worker. Run
+it in Docker (`docker compose up -d worker beat`), or on the host (the threads pool also works on
+Windows):
+
+```bash
+celery -A app.workers.celery_app:celery_app worker --pool threads --concurrency 4 --loglevel INFO
+celery -A app.workers.celery_app:celery_app beat --loglevel INFO   # the daily retention job
+```
+
+Without a worker, e-mails wait in the queue and mixes are simply computed on request.
+Running several API processes on the host (`uvicorn --workers N`)? Set `OMP_NUM_THREADS=1` and
+`OPENBLAS_NUM_THREADS=1`, or numpy starts a thread per CPU in each process (ADR-020).
 
 **Frontend**
 
@@ -124,6 +137,17 @@ Database and infrastructure:
 | Follow logs                             | `docker compose logs -f backend worker`                       |
 | Stop everything                         | `docker compose down`                                         |
 | Reset all data (**destroys volumes**)   | `docker compose down -v`                                      |
+
+Production-like checks (Milestone 7; DEPLOYMENT.md):
+
+| Task | Command |
+| --- | --- |
+| Production stack locally (HTTP on 8080, Mailpit on 8025) | `docker compose -p tastify-smoke -f docker-compose.prod.yml -f infrastructure/deployment/docker-compose.smoke.yml --env-file infrastructure/deployment/smoke.env up -d --build --wait` |
+| Smoke test it | `python scripts/smoke_test.py --base http://127.0.0.1:8080 --mailpit http://127.0.0.1:8025` |
+| Load test (needs the catalogue loaded) | `python scripts/loadtest.py --base http://127.0.0.1:8080 --users 20 --warmup 30 --duration 90` |
+| Remove it (**its volumes only**) | `docker compose -p tastify-smoke -f docker-compose.prod.yml -f infrastructure/deployment/docker-compose.smoke.yml --env-file infrastructure/deployment/smoke.env down -v` |
+| Metrics of the local API | `curl http://127.0.0.1:8000/metrics` |
+| Settings check | `python -m app.cli check-config` (in `backend/`) |
 
 ## Git hooks
 

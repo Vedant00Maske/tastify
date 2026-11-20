@@ -1,0 +1,97 @@
+# TASTIFY alerts (DEPLOYMENT.md §15; what to do: RUNBOOK.md "Alerts").
+# Thresholds follow the spec's initial targets: 99.5% monthly availability, recommendation p95
+# below 500 ms for cached and precomputed responses.
+
+groups:
+  - name: availability
+    rules:
+      - alert: TargetDown
+        expr: up{job=~"api|recommender|worker"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.job }} instance {{ $labels.instance }} is not answering scrapes"
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(tastify_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(tastify_http_requests_total[5m])), 1e-9) > 0.02
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "More than 2% of API requests fail with a server error"
+
+      - alert: ServiceOverloaded
+        expr: sum(rate(tastify_overloaded_total[5m])) > 0.1
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Requests are refused because the database pool is exhausted (add replicas or connections)"
+
+  - name: latency
+    rules:
+      - alert: RecommendationLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (
+            rate(tastify_http_request_duration_seconds_bucket{job="recommender",route=~".*(for-you|hidden-gems)"}[10m])
+          )) > 1.5
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "Personal mixes p95 above 1.5 s (cached and computed together; target 0.5 s cached)"
+
+      - alert: ApiLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (
+            rate(tastify_http_request_duration_seconds_bucket{job="api"}[10m])
+          )) > 1
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "API p95 latency above 1 s"
+
+      - alert: SlowDatabase
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(tastify_db_query_duration_seconds_bucket[10m]))) > 0.25
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "Database statement p95 above 250 ms"
+
+  - name: background
+    rules:
+      - alert: BackgroundJobsFailing
+        expr: sum by (task) (increase(tastify_background_jobs_total{outcome="failure"}[30m])) > 3
+        labels: { severity: warning }
+        annotations:
+          summary: "Background task {{ $labels.task }} failed repeatedly"
+
+      - alert: EmailNotDelivered
+        expr: sum(increase(tastify_emails_total{outcome=~"failed|queue_failed"}[1h])) > 0
+        labels: { severity: warning }
+        annotations:
+          summary: "Password reset or verification e-mail could not be delivered"
+
+      - alert: BackupTooOld
+        expr: time() - max(tastify_backup_last_success_timestamp_seconds) > 26 * 3600
+        for: 30m
+        labels: { severity: critical }
+        annotations:
+          summary: "No successful database backup in the last 26 hours"
+
+  - name: integrations
+    rules:
+      - alert: ProviderErrors
+        expr: |
+          sum by (provider) (rate(tastify_provider_requests_total{outcome="error"}[15m]))
+            / clamp_min(sum by (provider) (rate(tastify_provider_requests_total[15m])), 1e-9) > 0.2
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "More than 20% of calls to {{ $labels.provider }} fail"
+
+      - alert: WebAppErrors
+        expr: sum(increase(tastify_client_errors_total[15m])) > 20
+        labels: { severity: warning }
+        annotations:
+          summary: "The web app reports many errors in browsers"

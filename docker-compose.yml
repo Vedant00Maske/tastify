@@ -22,6 +22,13 @@ x-backend-common: &backend-common
     TRUSTED_PROXIES: '["127.0.0.1","::1","172.16.0.0/12","192.168.0.0/16"]'
     # File events do not cross the Windows/macOS -> Docker VM boundary reliably; poll instead.
     WATCHFILES_FORCE_POLLING: "true"
+    # E-mail goes to Mailpit (web inbox: http://127.0.0.1:8025).
+    SMTP_HOST: mailpit
+    SMTP_PORT: "1025"
+    SMTP_SECURITY: none
+    # One numerical thread per process (see backend/Dockerfile).
+    OMP_NUM_THREADS: "1"
+    OPENBLAS_NUM_THREADS: "1"
   volumes:
     - ./backend:/app
 
@@ -82,12 +89,27 @@ services:
 
   worker:
     <<: *backend-common
-    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--loglevel=INFO"]
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--pool", "threads", "--concurrency", "4", "--loglevel=INFO"]
     depends_on:
       migrate:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+
+  # Scheduled jobs (daily retention).
+  beat:
+    <<: *backend-common
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "beat", "--loglevel=INFO", "--schedule", "/tmp/celerybeat-schedule"]
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Catches every e-mail the app sends (password reset, verification): http://127.0.0.1:8025
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
   frontend:
     build:

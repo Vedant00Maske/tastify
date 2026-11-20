@@ -67,6 +67,7 @@ def me(user: User) -> MeOut:
         display_name=user.display_name,
         created_at=user.created_at,
         onboarding_completed=user.onboarding_completed_at is not None,
+        email_verified=user.email_verified_at is not None,
     )
 
 
@@ -108,7 +109,7 @@ class AuthService:
             raise EmailTakenError()
         user = User(
             email=data.email,
-            password_hash=passwords.hash_password(data.password),
+            password_hash=await passwords.hash_password_async(data.password),
             display_name=data.display_name,
             terms_accepted_at=datetime.now(UTC),
         )
@@ -131,12 +132,12 @@ class AuthService:
             select(User).where(User.email == email, User.status == "active")
         )
         if user is None:
-            passwords.verify_password(passwords.DUMMY_HASH, password)
+            await passwords.verify_password_async(passwords.DUMMY_HASH, password)
             raise InvalidCredentialsError()
-        if not passwords.verify_password(user.password_hash, password):
+        if not await passwords.verify_password_async(user.password_hash, password):
             raise InvalidCredentialsError()
         if passwords.needs_rehash(user.password_hash):
-            user.password_hash = passwords.hash_password(password)
+            user.password_hash = await passwords.hash_password_async(password)
         new_session = await self._open_session(user, user_agent)
         await self.session.commit()
         logger.info("user logged in user=%s", user.id)
@@ -182,12 +183,12 @@ class AuthService:
         self, user: User, current: str, new: str, keep_token: str | None
     ) -> None:
         """Change the password and sign out every other session."""
-        if not passwords.verify_password(user.password_hash, current):
+        if not await passwords.verify_password_async(user.password_hash, current):
             raise InvalidCredentialsError()
         problem = passwords.password_problem(new, user.email)
         if problem is not None:
             raise WeakPasswordError(problem)
-        user.password_hash = passwords.hash_password(new)
+        user.password_hash = await passwords.hash_password_async(new)
         statement = update(UserSession).where(
             UserSession.user_id == user.id, UserSession.revoked_at.is_(None)
         )
@@ -200,7 +201,7 @@ class AuthService:
     async def delete_account(self, user: User, password: str) -> None:
         """Delete the user and everything that belongs to them (cascades: events, preferences,
         profile, playlists, sessions). Spec §12.4, account deletion."""
-        if not passwords.verify_password(user.password_hash, password):
+        if not await passwords.verify_password_async(user.password_hash, password):
             raise InvalidCredentialsError()
         user_id: uuid.UUID = user.id
         await self.session.execute(delete(User).where(User.id == user_id))

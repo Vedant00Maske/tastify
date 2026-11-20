@@ -51,6 +51,17 @@ describe("auth forms", () => {
     expect(safeNext(null)).toBe("/home");
   });
 
+  it("refuses redirects that browsers would read as another site", () => {
+    // Browsers treat a backslash like a slash: "/\\evil.example" is "//evil.example".
+    expect(safeNext("/\\evil.example")).toBe("/home");
+    expect(safeNext("/\\/evil.example")).toBe("/home");
+    expect(safeNext("/%5Cevil.example")).toBe("/%5Cevil.example");
+    expect(safeNext("/\tevil")).toBe("/home");
+    expect(safeNext("/x\n/y")).toBe("/home");
+    expect(safeNext("/search?q=a#b")).toBe("/search?q=a#b");
+    expect(safeNext("javascript:alert(1)")).toBe("/home");
+  });
+
   it("validates registration", () => {
     const valid = {
       email: "listener@example.com",

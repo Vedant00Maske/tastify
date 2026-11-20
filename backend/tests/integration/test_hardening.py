@@ -82,10 +82,10 @@ async def test_metrics_are_exposed_and_can_require_a_token(
     scrape = await client.get("/metrics")
     assert scrape.status_code == 200
     body = scrape.text
-    assert "tastify_http_requests_total" in body
+    assert "soniqueo_http_requests_total" in body
     assert 'route="/genres"' in body or 'route="/api/v1/genres"' in body
-    assert "tastify_db_query_duration_seconds_bucket" in body
-    assert "tastify_http_requests_in_flight" in body
+    assert "soniqueo_db_query_duration_seconds_bucket" in body
+    assert "soniqueo_http_requests_in_flight" in body
 
     monkeypatch.setattr(get_settings(), "metrics_token", "scrape-secret")
     assert (await client.get("/metrics")).status_code == 401
@@ -122,7 +122,7 @@ async def test_web_app_errors_are_accepted_and_counted(client: AsyncClient) -> N
     )
     assert bad_path.status_code == 422
     scrape = await client.get("/metrics")
-    assert 'tastify_client_errors_total{kind="render"}' in scrape.text
+    assert 'soniqueo_client_errors_total{kind="render"}' in scrape.text
 
 
 def test_deployment_settings_are_checked() -> None:
@@ -138,9 +138,9 @@ def test_deployment_settings_are_checked() -> None:
     safe = Settings(
         _env_file=None,
         environment="production",
-        cors_origins=["https://tastify.example"],
-        app_public_url="https://tastify.example",
-        database_url="postgresql+asyncpg://tastify:s3cret-long@postgres:5432/tastify",
+        cors_origins=["https://soniqueo.example"],
+        app_public_url="https://soniqueo.example",
+        database_url="postgresql+asyncpg://soniqueo:s3cret-long@postgres:5432/soniqueo",
         smtp_host="smtp.example",
     )
     assert safe.deployment_problems() == []

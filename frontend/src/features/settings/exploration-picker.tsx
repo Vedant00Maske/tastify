@@ -77,7 +77,7 @@ export function ExplorationPicker({
           <p className="text-support text-fg-secondary">
             {value
               ? `${current.detail} (${current.share})`
-              : "TASTIFY sets the balance from how widely you listen."}
+              : "SONIQUEO sets the balance from how widely you listen."}
           </p>
         </div>
       </div>
@@ -98,7 +98,7 @@ export function ExplorationPicker({
           <Wand2 className="size-5 text-fg-secondary" />
         )}
         <span>
-          <span className="block font-semibold">Let TASTIFY learn it</span>
+          <span className="block font-semibold">Let SONIQUEO learn it</span>
           <span className="block text-support text-fg-secondary">
             Use my listening to decide how many new artists to mix in.
           </span>

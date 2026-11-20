@@ -27,7 +27,7 @@ from app.core.observability import init_error_tracking
 settings = get_settings()
 
 celery_app = Celery(
-    "tastify",
+    "soniqueo",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
     include=["app.workers.tasks"],

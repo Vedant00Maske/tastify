@@ -1,6 +1,6 @@
-# TASTIFY — Testing Strategy
+# SONIQUEO — Testing Strategy
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§11).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§11).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## 11. Testing Strategy
@@ -149,7 +149,7 @@ Tooling set up in Milestone 0:
   `test_hybrid_engine.py` runs the offline engine on a synthetic world (signals equal the backend's
   aggregation, candidates are unheard and attributed, generation is deterministic, a failing source
   is isolated). `integration/test_personalization_publish.py` publishes collaborative and hybrid
-  versions, serves a TASTIFY user through the API service and checks the served collaborative scores
+  versions, serves a SONIQUEO user through the API service and checks the served collaborative scores
   against the offline model. On the backend, `tests/unit/users/` covers event aggregation and taste
   profiles (recent listening does not erase long-term taste, cautious negatives, declared
   preferences, reproducibility), `tests/unit/recommendations/` the merger, filter, features,
@@ -218,7 +218,7 @@ Tooling set up in Milestone 0:
 - `backend/tests/unit/` is fast, with no network. External dependencies are replaced with fakes
   through `app.dependency_overrides`.
 - `backend/tests/integration/` is marked `@pytest.mark.integration`. These tests use the isolated
-  `tastify_test` database and Redis DB 15. Override them with `TEST_DATABASE_URL` and `TEST_REDIS_URL`.
+  `soniqueo_test` database and Redis DB 15. Override them with `TEST_DATABASE_URL` and `TEST_REDIS_URL`.
 - The `migrated_database` fixture brings the test schema to `head`. Use it in any test that needs
   tables.
 - Frontend tests sit next to the code they test (`*.test.ts(x)` under `src/`). E2E specs live in

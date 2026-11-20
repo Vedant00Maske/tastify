@@ -332,7 +332,7 @@ test("change music preferences in settings", async ({ page, api }) => {
     moods.getByRole("button", { name: "Deep Focus" }),
   ).toHaveAttribute("aria-pressed", "true");
 
-  await page.getByRole("button", { name: /Let TASTIFY learn it/ }).click();
+  await page.getByRole("button", { name: /Let SONIQUEO learn it/ }).click();
   await expect.poll(() => api.preferences.exploration_mode).toBeNull();
 
   await page
@@ -470,7 +470,7 @@ test("create a playlist from a prompt, regenerate it and save it", async ({
   await page.getByRole("button", { name: "Create playlist" }).click();
 
   const understood = page.getByRole("region", {
-    name: "What TASTIFY understood",
+    name: "What SONIQUEO understood",
   });
   await expect(understood).toContainText("alternative rock");
   await expect(

@@ -1,4 +1,4 @@
-# TASTIFY Frontend
+# SONIQUEO Frontend
 
 Next.js (App Router) + TypeScript + Tailwind CSS. See the [root README](../README.md) and
 [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) for the full setup.

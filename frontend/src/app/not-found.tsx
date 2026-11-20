@@ -17,7 +17,7 @@ export default function NotFound() {
         </p>
       </div>
       <Button asChild>
-        <Link href="/home">Back to TASTIFY</Link>
+        <Link href="/home">Back to SONIQUEO</Link>
       </Button>
     </main>
   );

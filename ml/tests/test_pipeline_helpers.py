@@ -1,6 +1,6 @@
 import pyarrow as pa
 
-from tastify_ml.pipelines.catalogue import first_per_track, select_seeds
+from soniqueo_ml.pipelines.catalogue import first_per_track, select_seeds
 
 
 def test_features_keep_one_row_per_canonical_track() -> None:

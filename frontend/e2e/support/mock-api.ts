@@ -1,7 +1,7 @@
 import type { BrowserContext, Page, Route } from "@playwright/test";
 
 /**
- * An in-memory TASTIFY API for end-to-end tests: every /api/v1 request from the browser is
+ * An in-memory SONIQUEO API for end-to-end tests: every /api/v1 request from the browser is
  * answered here, so the journeys run without the backend, database or models. Responses follow
  * the backend schemas (the app validates them with Zod, so a drift fails the test).
  */
@@ -9,7 +9,7 @@ import type { BrowserContext, Page, Route } from "@playwright/test";
 const uuid = (n: number) =>
   `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
 const USER_ID = uuid(1);
-export const SESSION_COOKIE = "tastify_session";
+export const SESSION_COOKIE = "soniqueo_session";
 export const RESET_TOKEN = "reset-token-0123456789abcdef";
 export const VERIFY_TOKEN = "verify-token-0123456789abcdef";
 

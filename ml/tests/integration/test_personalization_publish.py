@@ -1,5 +1,5 @@
 """Pipeline -> database -> API for Milestone 3: publish the collaborative and hybrid models, then
-serve a TASTIFY user and check the online collaborative scores against the offline model."""
+serve a SONIQUEO user and check the online collaborative scores against the offline model."""
 
 import json
 import uuid
@@ -26,16 +26,16 @@ from app.domains.recommendations.personalized import ARTIFACTS, PersonalizedReco
 from app.domains.users.models import User
 from app.domains.users.schemas import InteractionBatch, InteractionIn
 from app.domains.users.service import UserService
-from tastify_ml.recommendation.catalogue_data import load_catalogue
-from tastify_ml.recommendation.collaborative import (
+from soniqueo_ml.recommendation.catalogue_data import load_catalogue
+from soniqueo_ml.recommendation.collaborative import (
     ALSConfig,
     ItemItemConfig,
     train_als,
     train_item_item,
 )
-from tastify_ml.recommendation.lineage import lineage
-from tastify_ml.recommendation.popularity import compute_popularity
-from tastify_ml.recommendation.publish import (
+from soniqueo_ml.recommendation.lineage import lineage
+from soniqueo_ml.recommendation.popularity import compute_popularity
+from soniqueo_ml.recommendation.publish import (
     VersionSpec,
     publish_collaborative,
     publish_content,
@@ -78,7 +78,7 @@ async def demo_user(session: AsyncSession) -> User:
             password=f"demo-{uuid.uuid4().hex}",
             accept_terms=True,
         ),
-        "tastify-ml",
+        "soniqueo-ml",
     )
     return user
 
@@ -204,8 +204,8 @@ async def test_served_collaborative_scores_match_the_offline_model(
 async def test_catalogue_reset_refuses_to_orphan_users(
     session: AsyncSession, catalogue_ids: list[str]
 ) -> None:
-    from tastify_ml.pipelines.catalogue import stage_reset
+    from soniqueo_ml.pipelines.catalogue import stage_reset
 
     await demo_user(session)
-    with pytest.raises(RuntimeError, match="TASTIFY users exist"):
+    with pytest.raises(RuntimeError, match="SONIQUEO users exist"):
         await stage_reset()

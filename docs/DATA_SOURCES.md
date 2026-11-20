@@ -1,4 +1,4 @@
-# TASTIFY — Data Sources, Provenance and Licensing
+# SONIQUEO — Data Sources, Provenance and Licensing
 
 > Milestone 1 deliverable. Licence facts were verified against each provider's published terms on
 > 2026-11-16. Re-verify them before any public or commercial launch: terms change.
@@ -67,7 +67,7 @@ non-commercial too.
 
 Every published model version records its **lineage** in `model_versions.training_data.lineage`:
 the signals it uses, their source, licence and usage restriction, the upstream model versions, and
-the resulting restriction (`tastify_ml/recommendation/lineage.py`, ADR-016). MusicBrainz is split
+the resulting restriction (`soniqueo_ml/recommendation/lineage.py`, ADR-016). MusicBrainz is split
 by component, because its core data (recording and artist identities, titles, release metadata) is
 CC0 while tags and genre associations are CC BY-NC-SA.
 
@@ -76,7 +76,7 @@ CC0 while tags and genre associations are CC BY-NC-SA.
 | `popularity` | ListenBrainz listens, canonical listen-to-recording mapping | none |
 | `collaborative` (ALS factors, item-item neighbours) | the above, plus MusicBrainz core data (track identities) | none |
 | `content` | MusicBrainz core data, **MusicBrainz genre tags** | non-commercial |
-| `hybrid` (served ranker) | all of the above, plus TASTIFY users' own interactions | **non-commercial** |
+| `hybrid` (served ranker) | all of the above, plus SONIQUEO users' own interactions | **non-commercial** |
 | `hybrid` CC0 ranker (artifact `ranker_cc0`, not served) | collaborative, popularity, user interactions only | none |
 
 Each ranking feature also records its restriction (`app/domains/recommendations/features.py`), so a
@@ -110,7 +110,7 @@ Listens are public CC0 data, but user names identify real people. On ingest:
 2. Only the fields needed for recommendation research are kept: pseudonymous user key, timestamp,
    artist, track and release names, duration, and any client-submitted recording MBID.
 3. Listens stay in git-ignored Parquet files (`ml/data/processed/`). They never enter the
-   application database, where `users` and `user_interactions` are reserved for TASTIFY's own users
+   application database, where `users` and `user_interactions` are reserved for SONIQUEO's own users
    (spec §12.4).
 4. Bulk imports of old listening history are dropped: only listens whose own timestamp falls inside
    the dump window are kept.
@@ -160,8 +160,8 @@ markers are kept, because they denote different recordings.
 
 ```bash
 cd ml
-python -m tastify_ml download          # newest dumps, verified against published checksums
-python -m tastify_ml catalogue all     # rebuild; every stage is idempotent
+python -m soniqueo_ml download          # newest dumps, verified against published checksums
+python -m soniqueo_ml catalogue all     # rebuild; every stage is idempotent
 ```
 
 Respect provider limits. The pipeline sends at most one request per second to MusicBrainz and

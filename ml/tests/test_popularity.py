@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tastify_ml.recommendation.popularity import PopularityConfig, compute_popularity
+from soniqueo_ml.recommendation.popularity import PopularityConfig, compute_popularity
 from tests.recommendation_fixtures import T0, listens
 
 TRACKS = np.array(["a", "b", "c"], dtype=object)

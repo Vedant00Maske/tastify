@@ -64,7 +64,7 @@ class NotInModelError(RecommendationError):
 
 class ModelUnavailableError(RecommendationError):
     def __init__(self, model_type: str) -> None:
-        super().__init__(f"No active {model_type} model; run `python -m tastify_ml recommend all`")
+        super().__init__(f"No active {model_type} model; run `python -m soniqueo_ml recommend all`")
 
 
 def _beta(version: ModelVersion, mode: str) -> float:

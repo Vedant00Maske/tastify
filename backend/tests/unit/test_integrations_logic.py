@@ -55,7 +55,7 @@ def test_imported_event_ids_are_stable_and_valid() -> None:
     assert event_id("listenbrainz", key) != event_id("spotify", key)
     assert len(event_id("spotify", key)) <= 64
     assert re.fullmatch(r"[A-Za-z0-9._:-]+", event_id("youtube", key))
-    assert export_marker(USER) == f"[tastify:{USER}]"
+    assert export_marker(USER) == f"[soniqueo:{USER}]"
 
 
 def test_listens_prefer_the_mapped_recording() -> None:

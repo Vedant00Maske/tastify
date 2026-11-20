@@ -7,7 +7,7 @@ import { useCallback, useSyncExternalStore } from "react";
  * API). Storage can be unavailable (private mode, blocked site data), so every access is guarded
  * and the feature degrades to "no recent searches".
  */
-const KEY = "tastify:recent-searches";
+const KEY = "soniqueo:recent-searches";
 const MAX = 8;
 const listeners = new Set<() => void>();
 let cache: string[] | null = null;

@@ -61,7 +61,7 @@ export function BrandLogo({
     <Link
       href={href}
       prefetch={href === "/" ? false : undefined}
-      aria-label="TASTIFY home"
+      aria-label="SONIQUEO home"
       className={cn(
         "inline-flex items-center gap-2 font-display text-xl font-extrabold tracking-tight",
         className,
@@ -70,7 +70,7 @@ export function BrandLogo({
       <span className="grid size-7 place-items-center rounded-button-sm bg-accent text-on-accent">
         <Waves className="size-4" />
       </span>
-      TASTIFY
+      SONIQUEO
     </Link>
   );
 }

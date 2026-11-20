@@ -194,7 +194,7 @@ async def disconnect(
 async def import_history(
     provider: str, data: ImportIn, user: CurrentUser, service: Service
 ) -> ImportOut:
-    """Copy listening history or library data into TASTIFY (incremental, idempotent)."""
+    """Copy listening history or library data into SONIQUEO (incremental, idempotent)."""
     try:
         return await service.import_history(user.id, provider, data.consent)
     except HANDLED as error:
@@ -216,7 +216,7 @@ async def search_musicbrainz(
     q: Annotated[str, Query(min_length=2, max_length=200)],
     limit: Annotated[int, Query(ge=1, le=25)] = 10,
 ) -> RecordingSearchOut:
-    """Recordings on MusicBrainz, marked when the TASTIFY catalogue has them."""
+    """Recordings on MusicBrainz, marked when the SONIQUEO catalogue has them."""
     try:
         return await service.search_musicbrainz(q, limit)
     except HANDLED as error:

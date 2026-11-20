@@ -31,7 +31,7 @@ describe("formatting", () => {
   });
 
   it("hashes deterministically", () => {
-    expect(hashString("tastify")).toBe(hashString("tastify"));
+    expect(hashString("soniqueo")).toBe(hashString("soniqueo"));
     expect(hashString("a")).not.toBe(hashString("b"));
   });
 

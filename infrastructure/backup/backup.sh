@@ -2,7 +2,7 @@
 # Scheduled PostgreSQL backups (docker-compose.prod.yml `backup` service; RUNBOOK.md).
 #
 # Every BACKUP_INTERVAL_SECONDS (default daily) writes a compressed custom-format dump to
-# /backups/tastify-<UTC time>.dump, atomically (written to .partial, then renamed), deletes dumps
+# /backups/soniqueo-<UTC time>.dump, atomically (written to .partial, then renamed), deletes dumps
 # older than BACKUP_KEEP_DAYS, and records the time of the last success in /backups/last_success
 # (the worker exposes it as a metric; an alert fires when it is too old).
 #
@@ -18,7 +18,7 @@ KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"
 
 backup_once() {
 	stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-	target="$DIR/tastify-$stamp.dump"
+	target="$DIR/soniqueo-$stamp.dump"
 	echo "backup: writing $target"
 	pg_dump --format=custom --compress=6 --no-owner --no-privileges --file="$target.partial"
 	# A dump that cannot be listed is not a backup.
@@ -27,7 +27,7 @@ backup_once() {
 	date -u +%s >"$DIR/last_success"
 	size="$(du -h "$target" | cut -f1)"
 	echo "backup: done ($size)"
-	find "$DIR" -name 'tastify-*.dump' -type f -mtime +"$KEEP_DAYS" -print -delete
+	find "$DIR" -name 'soniqueo-*.dump' -type f -mtime +"$KEEP_DAYS" -print -delete
 	find "$DIR" -name '*.partial' -type f -mmin +120 -delete
 }
 

@@ -1,11 +1,11 @@
-# TASTIFY
+# SONIQUEO
 
-Personalized music discovery and playlist generation. TASTIFY learns individual musical taste from
+Personalized music discovery and playlist generation. SONIQUEO learns individual musical taste from
 listening history, interactions, moods, genres and discovery preferences, and owns its recommendation
 intelligence. Music platforms serve only as metadata, user-data and playlist-export providers.
 
 **Status:** Milestone 7 (production hardening: security audit, password reset and e-mail verification, load-tested performance, replicas behind HTTPS, monitoring, backups and recovery) complete, pending review. See [docs/ROADMAP.md](docs/ROADMAP.md).
-The approved product and engineering specification is [TASTIFY_v0.1.md](TASTIFY_v0.1.md).
+The approved product and engineering specification is [SONIQUEO_v0.1.md](SONIQUEO_v0.1.md).
 
 ## Tech stack
 
@@ -40,14 +40,14 @@ Build the music catalogue from public datasets (about 8 GB of downloads, see
 
 ```bash
 cd ml
-python -m tastify_ml download
-python -m tastify_ml catalogue all     # writes docs/reports/data-quality.md
+python -m soniqueo_ml download
+python -m soniqueo_ml catalogue all     # writes docs/reports/data-quality.md
 ```
 
 ## Repository layout
 
 ```text
-tastify/
+soniqueo/
 ├── frontend/              Next.js app: src/{app,components,features,hooks,lib,services,stores,types}, e2e/
 ├── backend/               FastAPI app, Celery worker, Alembic migrations, tests
 │   ├── app/
@@ -59,7 +59,7 @@ tastify/
 │   │   └── workers/       Celery app and tasks
 │   ├── alembic/           database migrations
 │   └── tests/             unit/ and integration/
-├── ml/                    offline pipelines (tastify_ml): ingestion, normalization, quality, models
+├── ml/                    offline pipelines (soniqueo_ml): ingestion, normalization, quality, models
 ├── infrastructure/        docker/ (service config), deployment/, monitoring/
 ├── docs/                  engineering documentation and ADRs
 ├── scripts/               developer and operations scripts

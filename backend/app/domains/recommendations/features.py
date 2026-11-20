@@ -6,7 +6,7 @@ licensing separation). `restriction`:
 
 - "non_commercial": derived from the content model, whose genre signal is MusicBrainz tags
   (CC BY-NC-SA);
-- "none": ListenBrainz listens (CC0), or the user's own TASTIFY interactions.
+- "none": ListenBrainz listens (CC0), or the user's own SONIQUEO interactions.
 
 `feature_matrix` builds the matrix from per-candidate arrays; the API and the offline evaluation
 both call it, so a trained ranker sees identical features in both.

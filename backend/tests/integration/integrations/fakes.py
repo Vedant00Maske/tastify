@@ -1,6 +1,6 @@
 """In-memory ListenBrainz, Spotify, YouTube and MusicBrainz servers (httpx MockTransport).
 
-They implement just the endpoints TASTIFY calls, following the providers' documented request
+They implement just the endpoints SONIQUEO calls, following the providers' documented request
 and response shapes (INTEGRATIONS.md), record every call, and can be told to fail.
 """
 
@@ -255,6 +255,6 @@ class FakeMusicBrainz:
     queries: list[str] = field(default_factory=list)
 
     def handler(self, request: httpx.Request) -> httpx.Response:
-        assert "TASTIFY" in request.headers["User-Agent"]
+        assert "SONIQUEO" in request.headers["User-Agent"]
         self.queries.append(request.url.params["query"])
         return _json({"recordings": self.recordings})

@@ -46,7 +46,7 @@ function NotFound({ what }: { what: string }) {
   return (
     <EmptyState
       title={`${what} not found`}
-      description="It may not be in the TASTIFY catalogue."
+      description="It may not be in the SONIQUEO catalogue."
       action={
         <Button asChild variant="secondary">
           <Link href="/search">Search instead</Link>

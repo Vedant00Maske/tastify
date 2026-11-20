@@ -36,7 +36,7 @@ def _engine_options() -> dict[str, Any]:
         "pool_recycle": 1800,
         "connect_args": {
             "server_settings": {
-                "application_name": f"tastify-{settings.environment}",
+                "application_name": f"soniqueo-{settings.environment}",
                 # A runaway query is cancelled by PostgreSQL instead of holding a connection.
                 "statement_timeout": str(settings.db_statement_timeout_ms),
             }

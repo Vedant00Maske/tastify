@@ -77,7 +77,7 @@ Each row is a measured problem, its cause and the fix (in order of discovery).
 | Observation | Cause | Fix | Effect |
 | --- | --- | --- | --- |
 | One API process: 9.6 requests/s, for-you p95 11 s, `/users/me` p95 5.6 s | CPU-heavy ranking and Argon2 hashing run on the single event loop; every request queues behind them | One process per container, scaled by replicas; Argon2 in a bounded thread pool; recommendations on their own service | Cheap endpoints stay fast while ranking is busy |
-| A `500` under load | Database pool exhausted | Pool exhaustion answers `503` with `Retry-After` and is counted (`tastify_overloaded_total`) | Overload is reported as overload |
+| A `500` under load | Database pool exhausted | Pool exhaustion answers `503` with `Retry-After` and is counted (`soniqueo_overloaded_total`) | Overload is reported as overload |
 | Repeated home pages recompute everything | No response cache | Per-user cache keyed by a state fingerprint; precompute after feedback | Throughput +75% in the first single-process test |
 | About 29 database round trips per for-you | One HNSW query per seed track | One `LATERAL` query for all seeds | Identical neighbours, 3.7 times faster (20 seeds) |
 | Track search 700-900 ms in the database | `OR` with a condition on the concatenated "artist title" scanned every track | Candidates through the trigram indexes, then the same scoring | Identical top 20 on 30 queries, 5 times faster |
@@ -87,12 +87,12 @@ Each row is a measured problem, its cause and the fix (in order of discovery).
 ## Reproducing
 
 ```bash
-docker compose -p tastify-smoke -f docker-compose.prod.yml \
+docker compose -p soniqueo-smoke -f docker-compose.prod.yml \
   -f infrastructure/deployment/docker-compose.smoke.yml \
   --env-file infrastructure/deployment/smoke.env up -d --build --wait
-docker exec -i tastify-postgres-1 sh -s export - < infrastructure/backup/catalogue.sh > catalogue.dump
-docker compose -p tastify-smoke ... cp catalogue.dump backup:/backups/catalogue.dump
-docker compose -p tastify-smoke ... exec backup sh /scripts/catalogue.sh import /backups/catalogue.dump
-RECOMMENDER_REPLICAS=8 DB_POOL_SIZE=5 DB_MAX_OVERFLOW=5 docker compose -p tastify-smoke ... up -d --wait
+docker exec -i soniqueo-postgres-1 sh -s export - < infrastructure/backup/catalogue.sh > catalogue.dump
+docker compose -p soniqueo-smoke ... cp catalogue.dump backup:/backups/catalogue.dump
+docker compose -p soniqueo-smoke ... exec backup sh /scripts/catalogue.sh import /backups/catalogue.dump
+RECOMMENDER_REPLICAS=8 DB_POOL_SIZE=5 DB_MAX_OVERFLOW=5 docker compose -p soniqueo-smoke ... up -d --wait
 python scripts/loadtest.py --base http://127.0.0.1:8080 --users 20 --warmup 30 --duration 90
 ```

@@ -1,6 +1,6 @@
-# TASTIFY — API Specification
+# SONIQUEO — API Specification
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§9).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§9).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## 9. Recommendation API Design
@@ -246,7 +246,7 @@ request; it is reported here. `strategy` is `personalized`, `cold_start` or `art
 **Authentication.** Every `/users/me/…`, `/interactions…`, `/playlists…` and personalized
 recommendation route requires a session (`401` otherwise); catalogue, mood and non-personal
 recommendation routes are public. Sessions are opaque tokens in an `HttpOnly`, `SameSite=Lax`
-cookie (`tastify_session`, `Secure` outside local development), stored only as SHA-256 hashes,
+cookie (`soniqueo_session`, `Secure` outside local development), stored only as SHA-256 hashes,
 valid for 30 days and extended while in use. State-changing requests whose `Origin` is not an
 allowed origin are rejected with `403` (CSRF defence). Details:
 [ADR-017](ADR/ADR-017-authentication-and-user-application.md).

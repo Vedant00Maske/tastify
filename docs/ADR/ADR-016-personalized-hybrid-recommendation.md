@@ -12,14 +12,14 @@ and exploration signals, and compose diverse mixes with a user-chosen familiar/d
 It must be benchmarked on chronological data against the Milestone 2 models (the listening-profile
 model was the best, NDCG@10 0.0243), reproducible, versioned, and keep FMA and licensing separate.
 
-Constraints: TASTIFY has no users or authentication yet (Milestone 4); the only behavioural data is
+Constraints: SONIQUEO has no users or authentication yet (Milestone 4); the only behavioural data is
 14 days of pseudonymous ListenBrainz listens, which must never enter the application database
 (DATA_SOURCES.md, Privacy), and which contain plays only (no skips, likes or saves).
 
 ## Problem
 
 Where do user data and profiles live before authentication? Which collaborative models, and how do
-new TASTIFY users (absent from training) get collaborative recommendations? How are candidate
+new SONIQUEO users (absent from training) get collaborative recommendations? How are candidate
 sources combined and ranked, how is diversity applied without blindly capping every list, and how
 do offline results stay faithful to what the API serves?
 
@@ -31,7 +31,7 @@ do offline results stay faithful to what the API serves?
 2. **Serve user-user or trained user factors.** Strong offline, but it needs every research user's
    history or factors at serving time, which the privacy policy forbids, and it cannot cover users
    who joined after training.
-3. **User data model now, item-level models served, shared pure logic.** TASTIFY users, immutable
+3. **User data model now, item-level models served, shared pure logic.** SONIQUEO users, immutable
    events, preferences and derived profiles in the application database; collaborative models
    published as item-level data only (ALS track factors, item-item neighbours) with users' factors
    folded in at request time; one implementation of profiles, candidate generation, features,
@@ -116,7 +116,7 @@ Measured on 2026-11-16 (docs/reports/hybrid-benchmark.md; test period 2026-11-13
   10 at the served ef_search; a for-you request takes about 0.45-0.55 s on the development machine.
 - Reproducibility: retraining the ranker and regenerating candidates gave identical results.
 
-- Recommendations for new TASTIFY users need no retraining: their collaborative factors are folded
+- Recommendations for new SONIQUEO users need no retraining: their collaborative factors are folded
   in from their own events, and only item-level aggregates of research data are published.
 - Every response names the sources and model versions behind each track and an evidence-based
   reason; a failing source degrades the mix instead of failing the request.
@@ -128,6 +128,6 @@ Measured on 2026-11-16 (docs/reports/hybrid-benchmark.md; test period 2026-11-13
 - The request path runs about a dozen queries (vector searches, neighbour aggregation, facts); it is
   fast at this catalogue size but should move to a feature cache before large catalogues
   (Milestone 7).
-- Revisit when TASTIFY collects its own interactions (retrain on them, tune event weights), when
+- Revisit when SONIQUEO collects its own interactions (retrain on them, tune event weights), when
   authentication lands (Milestone 4 replaces the development user API), or if the collaborative
   signal stops beating content on fresh data.

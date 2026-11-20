@@ -8,7 +8,7 @@ research user's history or factors ever enters the application database, ADR-016
   `implicit`'s ItemItemRecommender computes);
 - matrix factorization (implicit ALS): track factors. A user's factors are solved from the
   user's own interactions at request time ("fold-in", the same least-squares step ALS uses to
-  update users), so new TASTIFY users get collaborative recommendations without retraining.
+  update users), so new SONIQUEO users get collaborative recommendations without retraining.
 
 The confidence of an interaction is BM25-weighted, as in training: frequent listening to a
 track counts with diminishing returns, long histories are length-normalized and tracks almost

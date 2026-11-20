@@ -3,7 +3,7 @@ import pytest
 
 from app.domains.catalogue import normalization
 from app.domains.catalogue.writer import track_matching_key as python_track_key
-from tastify_ml.data.normalization import keys
+from soniqueo_ml.data.normalization import keys
 
 # Deliberately awkward strings: accents, punctuation, scripts, compatibility forms, annotations.
 CORPUS = [

@@ -22,7 +22,7 @@ from app.core import metrics
 from app.core.config import get_settings
 from app.core.request_context import new_request_id, request_id_var
 
-logger = logging.getLogger("tastify.access")
+logger = logging.getLogger("soniqueo.access")
 
 # Interactive docs load Swagger UI's scripts and styles; everything else is JSON.
 _DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")

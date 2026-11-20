@@ -9,7 +9,7 @@
 #
 # Run inside the backup container, which has the PostgreSQL client and the backups volume:
 #   docker compose -f docker-compose.prod.yml exec backup \
-#     sh /scripts/restore.sh /backups/tastify-20261119T033000Z.dump tastify_restored
+#     sh /scripts/restore.sh /backups/soniqueo-20261119T033000Z.dump soniqueo_restored
 set -eu
 
 DUMP="${1:?usage: restore.sh <dump file> <target database> [--replace]}"

@@ -26,10 +26,10 @@ rules?
 
 ## Decision
 
-`tastify_ml` imports the backend's data-layer modules directly. It puts `backend/` on `sys.path`
+`soniqueo_ml` imports the backend's data-layer modules directly. It puts `backend/` on `sys.path`
 from a checkout, and its `requirements.txt` includes the backend runtime requirements. The rule is
 one-directional: `ml/` may import backend data-layer modules, but never `app.api` or request
-handling, and the backend never imports `tastify_ml`. Heavy ML dependencies (pandas, scikit-learn,
+handling, and the backend never imports `soniqueo_ml`. Heavy ML dependencies (pandas, scikit-learn,
 pyarrow) stay out of the backend image.
 
 ## Consequences

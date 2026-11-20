@@ -1,6 +1,6 @@
-# TASTIFY — Development Roadmap
+# SONIQUEO — Development Roadmap
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§16).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§16).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## Current roadmap (revised 2026-11-17)
@@ -28,7 +28,7 @@ be retrieved without depending on a specific provider.
 - [x] Normalized relational schema: canonical tracks/artists/albums, external ids, genres,
       features, provenance, match review (DATABASE.md, migration `65ea8b207eac`)
 - [x] Entity resolution logic with an explicit policy and review queue (ADR-014)
-- [x] Automated ingestion scripts: `python -m tastify_ml download` and `catalogue <stage>`
+- [x] Automated ingestion scripts: `python -m soniqueo_ml download` and `catalogue <stage>`
 - [x] Reproducible cleaning and normalization pipeline (checksummed raw inputs, idempotent stages)
 - [x] Data quality checks and report (`catalogue quality`, docs/reports/data-quality.md)
 - [x] Provider-independent catalogue API: `/tracks/search`, `/tracks/lookup`, `/tracks/{id}`, `/artists/{id}`
@@ -52,7 +52,7 @@ with measurable evaluation results.
 
 ### Milestone 3 deliverables
 
-Acceptance criterion: TASTIFY learns an individual user's taste (plays, likes, skips, saves,
+Acceptance criterion: SONIQUEO learns an individual user's taste (plays, likes, skips, saves,
 replays) and generates a personalized mix that reflects it while introducing relevant new artists,
 and the hybrid is benchmarked against the Milestone 2 models (reports/hybrid-benchmark.md, ADR-016).
 
@@ -77,7 +77,7 @@ and the hybrid is benchmarked against the Milestone 2 models (reports/hybrid-ben
 
 ### Milestone 4 deliverables
 
-Acceptance criterion: a person can create an account, tell TASTIFY their taste, and use a
+Acceptance criterion: a person can create an account, tell SONIQUEO their taste, and use a
 complete, accessible application (dashboard, discovery, moods, playlists, feedback, taste
 analytics, settings) whose recommendations respond to what they like, save and skip (ADR-017).
 

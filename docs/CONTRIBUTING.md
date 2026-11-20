@@ -1,4 +1,4 @@
-# TASTIFY — Engineering Workflow and Coding Standards
+# SONIQUEO — Engineering Workflow and Coding Standards
 
 ## Branching strategy
 

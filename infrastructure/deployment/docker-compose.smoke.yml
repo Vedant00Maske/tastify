@@ -1,7 +1,7 @@
 # Smoke-test overlay for docker-compose.prod.yml: the production stack on plain HTTP with a
 # local mail catcher, for CI and for trying a deployment locally (DEPLOYMENT.md "Smoke test").
 #
-#   docker compose -p tastify-smoke -f docker-compose.prod.yml \
+#   docker compose -p soniqueo-smoke -f docker-compose.prod.yml \
 #     -f infrastructure/deployment/docker-compose.smoke.yml \
 #     --env-file infrastructure/deployment/smoke.env up -d --build --wait
 #   python scripts/smoke_test.py --base http://127.0.0.1:8080 --mailpit http://127.0.0.1:8025

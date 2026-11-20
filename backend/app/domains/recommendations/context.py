@@ -16,7 +16,7 @@ when less, zero without enough evidence. It nudges the ranking by a small weight
 decides it alone.
 
 Pure functions only: the API applies them to a user's events, and the offline evaluation
-(`tastify_ml.evaluation.context_experiment`) to research listens.
+(`soniqueo_ml.evaluation.context_experiment`) to research listens.
 """
 
 import math

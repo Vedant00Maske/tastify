@@ -1,4 +1,4 @@
-/** Typed operations of the TASTIFY API (docs/API_SPEC.md), one function per endpoint. */
+/** Typed operations of the SONIQUEO API (docs/API_SPEC.md), one function per endpoint. */
 import {
   ArtistDetailSchema,
   AuthorizeSchema,

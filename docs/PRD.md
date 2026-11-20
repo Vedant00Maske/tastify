@@ -1,15 +1,15 @@
-# TASTIFY — Product Requirements
+# SONIQUEO — Product Requirements
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§1–4, §19).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§1–4, §19).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## 1. Executive Summary
 
-TASTIFY is a personalized music discovery and playlist generation platform that learns individual musical preferences and recommends songs based on listening history, user interactions, musical characteristics, moods, genres and discovery preferences.
+SONIQUEO is a personalized music discovery and playlist generation platform that learns individual musical preferences and recommends songs based on listening history, user interactions, musical characteristics, moods, genres and discovery preferences.
 
 The platform will integrate with music services such as Spotify, YouTube and open music ecosystems wherever supported APIs and usage permissions allow.
 
-Unlike a conventional playlist generator, TASTIFY will maintain its own recommendation intelligence. External platforms will primarily act as music metadata, user-data and playlist-export providers.
+Unlike a conventional playlist generator, SONIQUEO will maintain its own recommendation intelligence. External platforms will primarily act as music metadata, user-data and playlist-export providers.
 
 The system will combine:
 

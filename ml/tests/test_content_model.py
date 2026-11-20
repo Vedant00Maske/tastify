@@ -7,9 +7,9 @@ from app.domains.recommendations.ranking import (
     genre_affinity,
     smoothed_tag_weight,
 )
-from tastify_ml.evaluation.experiment import genre_affinity_matrix
-from tastify_ml.recommendation.catalogue_data import CatalogueData
-from tastify_ml.recommendation.content import (
+from soniqueo_ml.evaluation.experiment import genre_affinity_matrix
+from soniqueo_ml.recommendation.catalogue_data import CatalogueData
+from soniqueo_ml.recommendation.content import (
     ContentConfig,
     artist_embeddings,
     fit_content_model,

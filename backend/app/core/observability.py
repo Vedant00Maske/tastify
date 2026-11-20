@@ -42,7 +42,7 @@ def init_error_tracking(component: str) -> bool:
     sentry_sdk.init(
         dsn=settings.sentry_dsn,
         environment=settings.environment,
-        release=f"tastify@{__version__}",
+        release=f"soniqueo@{__version__}",
         send_default_pii=False,
         traces_sample_rate=settings.sentry_traces_sample_rate,
         before_send=_scrub,
@@ -51,6 +51,6 @@ def init_error_tracking(component: str) -> bool:
         server_name=component,
     )
     # The access log's 5xx lines repeat errors that are already reported with their exception.
-    ignore_logger("tastify.access")
+    ignore_logger("soniqueo.access")
     logger.info("error tracking enabled component=%s", component)
     return True

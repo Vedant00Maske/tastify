@@ -1,4 +1,4 @@
-"""TASTIFY users, their interaction events, declared preferences and derived taste profiles
+"""SONIQUEO users, their interaction events, declared preferences and derived taste profiles
 (docs/DATABASE.md, ADR-016).
 
 - `user_interactions` are immutable facts (spec §6.4 rule 7): never updated, only appended.

@@ -1,4 +1,4 @@
-# TASTIFY — Local Development
+# SONIQUEO — Local Development
 
 ## Prerequisites
 
@@ -90,8 +90,8 @@ origin are rejected. Create an account at `/register`; the app walks you through
 ```bash
 pip install -r ml/requirements-dev.txt     # pandas, pyarrow, scikit-learn on top of the backend deps
 cd ml
-python -m tastify_ml download              # ~8 GB of public dumps into ml/data/raw (git-ignored)
-python -m tastify_ml catalogue all         # build the catalogue; see docs/ML_PIPELINE.md
+python -m soniqueo_ml download              # ~8 GB of public dumps into ml/data/raw (git-ignored)
+python -m soniqueo_ml catalogue all         # build the catalogue; see docs/ML_PIPELINE.md
 ```
 
 `.env` must contain `LISTENS_PSEUDONYM_KEY` (a long random secret) before the `listens` stage runs.
@@ -132,7 +132,7 @@ Database and infrastructure:
 | --------------------------------------- | ------------------------------------------------------------- |
 | Apply migrations                        | `alembic upgrade head` (or `docker compose run --rm migrate`) |
 | New migration from model changes        | `alembic revision --autogenerate -m "describe change"`        |
-| psql shell                              | `docker compose exec postgres psql -U tastify -d tastify`     |
+| psql shell                              | `docker compose exec postgres psql -U soniqueo -d soniqueo`     |
 | redis-cli                               | `docker compose exec redis redis-cli`                         |
 | Follow logs                             | `docker compose logs -f backend worker`                       |
 | Stop everything                         | `docker compose down`                                         |
@@ -142,10 +142,10 @@ Production-like checks (Milestone 7; DEPLOYMENT.md):
 
 | Task | Command |
 | --- | --- |
-| Production stack locally (HTTP on 8080, Mailpit on 8025) | `docker compose -p tastify-smoke -f docker-compose.prod.yml -f infrastructure/deployment/docker-compose.smoke.yml --env-file infrastructure/deployment/smoke.env up -d --build --wait` |
+| Production stack locally (HTTP on 8080, Mailpit on 8025) | `docker compose -p soniqueo-smoke -f docker-compose.prod.yml -f infrastructure/deployment/docker-compose.smoke.yml --env-file infrastructure/deployment/smoke.env up -d --build --wait` |
 | Smoke test it | `python scripts/smoke_test.py --base http://127.0.0.1:8080 --mailpit http://127.0.0.1:8025` |
 | Load test (needs the catalogue loaded) | `python scripts/loadtest.py --base http://127.0.0.1:8080 --users 20 --warmup 30 --duration 90` |
-| Remove it (**its volumes only**) | `docker compose -p tastify-smoke -f docker-compose.prod.yml -f infrastructure/deployment/docker-compose.smoke.yml --env-file infrastructure/deployment/smoke.env down -v` |
+| Remove it (**its volumes only**) | `docker compose -p soniqueo-smoke -f docker-compose.prod.yml -f infrastructure/deployment/docker-compose.smoke.yml --env-file infrastructure/deployment/smoke.env down -v` |
 | Metrics of the local API | `curl http://127.0.0.1:8000/metrics` |
 | Settings check | `python -m app.cli check-config` (in `backend/`) |
 
@@ -160,9 +160,9 @@ pre-commit run --all-files
 
 ## Troubleshooting
 
-- **`tastify_test` database does not exist.** The init script only runs when the PostgreSQL volume
+- **`soniqueo_test` database does not exist.** The init script only runs when the PostgreSQL volume
   is first created. Create the database by hand with
-  `docker compose exec postgres createdb -U tastify tastify_test`, or reset with
+  `docker compose exec postgres createdb -U soniqueo soniqueo_test`, or reset with
   `docker compose down -v`.
 - **Port already in use (5432, 6379, 8000, 3000).** Stop the local service using the port, or change
   the host side of the mapping in `docker-compose.yml`.

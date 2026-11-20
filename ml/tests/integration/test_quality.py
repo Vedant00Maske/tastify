@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domains.catalogue.ingestion import SourceArtist, SourceCredit, SourceGenreTag, SourceTrack
 from app.domains.catalogue.provenance import ensure_data_source
 from app.domains.catalogue.writer import CatalogueWriter
-from tastify_ml.data.quality.checks import run_checks
-from tastify_ml.data.quality.report import collect_summary, render_markdown, write_report
+from soniqueo_ml.data.quality.checks import run_checks
+from soniqueo_ml.data.quality.report import collect_summary, render_markdown, write_report
 
 pytestmark = pytest.mark.integration
 

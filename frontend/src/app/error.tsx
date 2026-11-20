@@ -23,7 +23,7 @@ export default function GlobalError({
     <main className="flex min-h-dvh flex-col items-center justify-center gap-5 px-4 text-center">
       <h1 className="text-page font-bold">Something went wrong</h1>
       <p className="max-w-md text-fg-secondary">
-        TASTIFY hit an unexpected problem showing this page. Try again, or go
+        SONIQUEO hit an unexpected problem showing this page. Try again, or go
         back home.
         {error.digest ? (
           <span className="mt-2 block text-meta text-fg-muted">

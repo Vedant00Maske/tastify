@@ -11,7 +11,7 @@ import {
 } from "recharts";
 
 /**
- * Single-series charts in the TASTIFY palette: one hue (the accent), thin bars with rounded data
+ * Single-series charts in the SONIQUEO palette: one hue (the accent), thin bars with rounded data
  * ends, a recessive grid, one axis, and a hover tooltip. Every chart is paired with a text
  * summary or table by its caller, so nothing is conveyed by the picture alone.
  */

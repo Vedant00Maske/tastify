@@ -103,7 +103,7 @@ function Understood({ interpretation }: { interpretation: Interpretation }) {
         id="understood-title"
         className="text-support font-semibold text-fg-secondary"
       >
-        What TASTIFY understood
+        What SONIQUEO understood
       </h2>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {chips.map((chip) => (
@@ -143,7 +143,7 @@ function promptError(error: unknown): { message: string; ignored: string[] } {
     message:
       error instanceof ApiError
         ? error.message
-        : "Could not reach TASTIFY. Try again.",
+        : "Could not reach SONIQUEO. Try again.",
     ignored: [],
   };
 }

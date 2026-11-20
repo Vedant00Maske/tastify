@@ -1,6 +1,6 @@
-# TASTIFY — Database Design
+# SONIQUEO — Database Design
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§6.2–6.5).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§6.2–6.5).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ### 6.2 Main Domain Entities
@@ -192,7 +192,7 @@ Design notes:
 - JSONB is used only for raw payloads, job parameters/statistics and match evidence, which are
   genuinely variable (rule 10).
 - Listening events from ListenBrainz are research data and are **not** stored here (see
-  DATA_SOURCES.md, Privacy). TASTIFY's own `users` and `user_interactions` arrived with
+  DATA_SOURCES.md, Privacy). SONIQUEO's own `users` and `user_interactions` arrived with
   Milestone 3 (below).
 
 ## Implemented recommendation schema (Milestone 2)
@@ -217,7 +217,7 @@ erDiagram
 | `track_embeddings` | Per (version, track): `vector(128)`, L2-normalized. HNSW index (`m=16`, `ef_construction=64`, `vector_cosine_ops`). |
 | `artist_embeddings` | Per (version, artist): `vector(128)` (popularity-weighted mean of the artist's track embeddings) and `track_count`. HNSW index as above. |
 
-Publishing a version (`python -m tastify_ml recommend publish`) inserts its rows, activates it and
+Publishing a version (`python -m soniqueo_ml recommend publish`) inserts its rows, activates it and
 deletes the serving rows of retired versions in one transaction. Retired versions keep their
 registry row, so their parameters and metrics stay auditable, while the vector indexes only hold
 active vectors. Resetting the catalogue (`catalogue reset`) truncates these tables and retires every
@@ -248,7 +248,7 @@ erDiagram
 
 | Table | Purpose and key rules |
 | --- | --- |
-| `users` | TASTIFY users: id, `status` (`active`, `deleted`), timestamps. Milestone 4 adds the account columns (below). |
+| `users` | SONIQUEO users: id, `status` (`active`, `deleted`), timestamps. Milestone 4 adds the account columns (below). |
 | `user_preferences` | One row per user: `exploration_mode` (`familiar`, `balanced`, `explorer`; NULL = derived from behaviour) and `personalization_enabled` (opt-out, spec §12.4). No row means defaults. |
 | `user_artist_preferences`, `user_genre_preferences` | Declared favourite (`preferred`) or `excluded` artists and genres, one row each, validated by foreign keys. |
 | `user_interactions` | **Immutable** events (rule 7): `event_type` (`play`, `complete`, `replay`, `skip`, `like`, `unlike`, `dislike`, `undislike`, `save`, `unsave`, `playlist_add`), `occurred_at` (client time), `received_at` (server time), `position_ms` (how far playback got, e.g. an early skip), `session_id`, `source`. Unique (`user_id`, `client_event_id`) makes retried batches idempotent. Indexed by (user, occurred_at) and (track, event_type). Tracks referenced by events cannot be deleted (RESTRICT); deleting a user deletes their events (CASCADE). |
@@ -376,5 +376,5 @@ linted and formatted with ruff automatically when generated.
 
 | Database       | Used by                                     | Created by                                                      |
 | -------------- | ------------------------------------------- | --------------------------------------------------------------- |
-| `tastify`      | Local development                           | `POSTGRES_DB` in docker compose                                 |
-| `tastify_test` | Integration tests (`pytest -m integration`) | `infrastructure/docker/postgres/init/` (in CI: the service container) |
+| `soniqueo`      | Local development                           | `POSTGRES_DB` in docker compose                                 |
+| `soniqueo_test` | Integration tests (`pytest -m integration`) | `infrastructure/docker/postgres/init/` (in CI: the service container) |

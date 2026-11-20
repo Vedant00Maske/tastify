@@ -1,9 +1,0 @@
-# Dashboards from infrastructure/monitoring/grafana/dashboards (read-only in Grafana).
-apiVersion: 1
-providers:
-  - name: tastify
-    folder: TASTIFY
-    type: file
-    allowUiUpdates: false
-    options:
-      path: /var/lib/grafana/dashboards

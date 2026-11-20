@@ -1,4 +1,4 @@
-"""Smoke test of a running TASTIFY deployment (spec §14 step 9; DEPLOYMENT.md "Smoke test").
+"""Smoke test of a running SONIQUEO deployment (spec §14 step 9; DEPLOYMENT.md "Smoke test").
 
 Exercises the critical journeys through the real edge proxy: pages and their security headers,
 health, the API's isolation of /metrics, registration, e-mail verification and password reset
@@ -6,7 +6,7 @@ through the real worker and mail server, playlists, recommendations, data export
 reporting and account deletion. The test account is deleted at the end.
 
     python scripts/smoke_test.py --base http://127.0.0.1:8080 --mailpit http://127.0.0.1:8025
-    python scripts/smoke_test.py --base https://tastify.example.com      # without mail checks
+    python scripts/smoke_test.py --base https://soniqueo.example.com      # without mail checks
 
 Exit status 0 when every check passes. (Checks are assertions; do not run with python -O.)
 """
@@ -80,7 +80,7 @@ class Smoke:
     def internals_hidden(self) -> None:
         # /metrics is not routed to the API: the web app answers (redirect or 404), never data.
         scrape = self.client.get("/metrics")
-        assert "tastify_http_requests_total" not in scrape.text, scrape.status_code
+        assert "soniqueo_http_requests_total" not in scrape.text, scrape.status_code
         assert scrape.status_code != 200 or "text/html" in scrape.headers.get(
             "content-type", ""
         )
@@ -132,7 +132,7 @@ class Smoke:
             "/api/v1/auth/password/forgot", json={"email": self.email}
         )
         assert forgot.status_code == 202, forgot.text
-        token = self._mail_token("Reset your TASTIFY password", "/reset-password")
+        token = self._mail_token("Reset your SONIQUEO password", "/reset-password")
         reset = self.client.post(
             "/api/v1/auth/password/reset",
             json={"token": token, "new_password": NEW_PASSWORD},

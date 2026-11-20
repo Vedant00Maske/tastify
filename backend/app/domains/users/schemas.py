@@ -129,7 +129,7 @@ class GenreAffinityOut(BaseModel):
 
 
 class TasteProfileOut(BaseModel):
-    """The user's taste profile (spec §8.4): what TASTIFY learned, and why it recommends."""
+    """The user's taste profile (spec §8.4): what SONIQUEO learned, and why it recommends."""
 
     user_id: uuid.UUID
     profile_version: str

@@ -1,4 +1,4 @@
-# Prometheus for TASTIFY (docker-compose.prod.yml, profile "monitoring"; DEPLOYMENT.md §15).
+# Prometheus for SONIQUEO (docker-compose.prod.yml, profile "monitoring"; DEPLOYMENT.md §15).
 # Every API and recommender replica is discovered through Docker's DNS (one A record per
 # replica) and scraped on its own, so per-process metrics add up correctly.
 

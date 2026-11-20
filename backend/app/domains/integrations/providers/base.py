@@ -78,7 +78,7 @@ def translate(provider: str, error: ProviderError) -> IntegrationError:
     if status is None or status >= 500:
         return ProviderUnavailableError(f"{provider} is unavailable right now")
     if status == 401:
-        return ProviderAuthError(f"{provider} no longer accepts TASTIFY's access")
+        return ProviderAuthError(f"{provider} no longer accepts SONIQUEO's access")
     if status == 429:
         return ProviderRateLimitedError(provider, error.retry_after)
     return ProviderRejectedError(f"{provider} refused the request (HTTP {status})")

@@ -8,11 +8,11 @@
 Recommendation quality is the product's core value. Provider recommendation features are
 unreliable as a foundation: Spotify's recommendations and audio-features endpoints are unavailable
 to new apps, and every provider can change its terms and quotas. Spec principle 1: recommendation
-intelligence belongs to TASTIFY.
+intelligence belongs to SONIQUEO.
 
 ## Problem
 
-Should TASTIFY rely on providers' recommendation and feature APIs, or own its recommendation logic?
+Should SONIQUEO rely on providers' recommendation and feature APIs, or own its recommendation logic?
 
 ## Alternatives considered
 
@@ -24,7 +24,7 @@ Should TASTIFY rely on providers' recommendation and feature APIs, or own its re
 
 ## Decision
 
-TASTIFY owns candidate generation, ranking, diversity re-ranking and explanations. Providers act
+SONIQUEO owns candidate generation, ranking, diversity re-ranking and explanations. Providers act
 only as metadata sources, user-data sources (with consent) and playlist-export targets. No
 provider-specific types or fields enter the recommendations domain.
 

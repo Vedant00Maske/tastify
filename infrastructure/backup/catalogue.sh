@@ -11,7 +11,7 @@
 # name, and every other table is catalogue, provenance or model data.
 #
 # From the development database to a file on the host:
-#   docker exec -i tastify-postgres-1 sh -s export - < infrastructure/backup/catalogue.sh > catalogue.dump
+#   docker exec -i soniqueo-postgres-1 sh -s export - < infrastructure/backup/catalogue.sh > catalogue.dump
 # Into a deployment:
 #   docker compose -f docker-compose.prod.yml cp catalogue.dump backup:/backups/catalogue.dump
 #   docker compose -f docker-compose.prod.yml exec backup sh /scripts/catalogue.sh import /backups/catalogue.dump
@@ -20,8 +20,8 @@
 # the defaults come from POSTGRES_USER / POSTGRES_DB).
 set -eu
 
-export PGUSER="${PGUSER:-${POSTGRES_USER:-tastify}}"
-export PGDATABASE="${PGDATABASE:-${POSTGRES_DB:-tastify}}"
+export PGUSER="${PGUSER:-${POSTGRES_USER:-soniqueo}}"
+export PGDATABASE="${PGDATABASE:-${POSTGRES_DB:-soniqueo}}"
 
 USER_TABLES="users user_sessions account_tokens user_preferences user_artist_preferences \
 user_genre_preferences user_interactions user_taste_profiles playlists playlist_tracks \

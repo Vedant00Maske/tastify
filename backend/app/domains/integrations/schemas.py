@@ -49,7 +49,7 @@ class TokenConnectIn(BaseModel):
 
 class ImportIn(BaseModel):
     consent: bool = Field(
-        description="The user agrees to copy their listening history into TASTIFY."
+        description="The user agrees to copy their listening history into SONIQUEO."
     )
 
 
@@ -84,7 +84,7 @@ class RecordingOut(BaseModel):
     release: str | None
     length_ms: int | None
     url: str
-    track_id: uuid.UUID | None = Field(description="The catalogue track, when TASTIFY has it")
+    track_id: uuid.UUID | None = Field(description="The catalogue track, when SONIQUEO has it")
 
 
 class RecordingSearchOut(BaseModel):

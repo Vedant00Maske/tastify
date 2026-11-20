@@ -1,4 +1,4 @@
-"""Data export (spec §12.4): everything TASTIFY stores about one user, as plain JSON.
+"""Data export (spec §12.4): everything SONIQUEO stores about one user, as plain JSON.
 
 Includes the account (never the password hash), declared preferences, every interaction event,
 the derived taste profile and every playlist with its tracks. Sessions are listed without their

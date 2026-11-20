@@ -85,7 +85,7 @@ class ProviderImport(Base):
 
 
 class PlaylistExport(Base):
-    """A TASTIFY playlist mirrored on a provider. One row per (playlist, provider): exporting
+    """A SONIQUEO playlist mirrored on a provider. One row per (playlist, provider): exporting
     again updates the same remote playlist instead of creating another (retry-safe)."""
 
     __tablename__ = "playlist_exports"

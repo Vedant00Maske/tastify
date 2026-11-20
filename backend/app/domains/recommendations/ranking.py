@@ -1,6 +1,6 @@
 """Ranking rules shared by the API and the offline evaluation (ADR-015).
 
-`tastify_ml.evaluation` calls these same functions, so the offline metrics in
+`soniqueo_ml.evaluation` calls these same functions, so the offline metrics in
 docs/reports/model-benchmark.md measure exactly what the API serves.
 """
 

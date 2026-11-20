@@ -17,7 +17,7 @@ from app.core.database import get_db_session
 from app.domains.auth.service import AuthService
 from app.domains.users.models import User
 
-SESSION_COOKIE = "tastify_session"
+SESSION_COOKIE = "soniqueo_session"
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 

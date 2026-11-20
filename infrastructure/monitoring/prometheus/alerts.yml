@@ -1,4 +1,4 @@
-# TASTIFY alerts (DEPLOYMENT.md §15; what to do: RUNBOOK.md "Alerts").
+# SONIQUEO alerts (DEPLOYMENT.md §15; what to do: RUNBOOK.md "Alerts").
 # Thresholds follow the spec's initial targets: 99.5% monthly availability, recommendation p95
 # below 500 ms for cached and precomputed responses.
 
@@ -14,15 +14,15 @@ groups:
 
       - alert: HighErrorRate
         expr: |
-          sum(rate(tastify_http_requests_total{status=~"5.."}[5m]))
-            / clamp_min(sum(rate(tastify_http_requests_total[5m])), 1e-9) > 0.02
+          sum(rate(soniqueo_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(soniqueo_http_requests_total[5m])), 1e-9) > 0.02
         for: 5m
         labels: { severity: critical }
         annotations:
           summary: "More than 2% of API requests fail with a server error"
 
       - alert: ServiceOverloaded
-        expr: sum(rate(tastify_overloaded_total[5m])) > 0.1
+        expr: sum(rate(soniqueo_overloaded_total[5m])) > 0.1
         for: 5m
         labels: { severity: warning }
         annotations:
@@ -33,7 +33,7 @@ groups:
       - alert: RecommendationLatencyHigh
         expr: |
           histogram_quantile(0.95, sum by (le) (
-            rate(tastify_http_request_duration_seconds_bucket{job="recommender",route=~".*(for-you|hidden-gems)"}[10m])
+            rate(soniqueo_http_request_duration_seconds_bucket{job="recommender",route=~".*(for-you|hidden-gems)"}[10m])
           )) > 1.5
         for: 15m
         labels: { severity: warning }
@@ -43,7 +43,7 @@ groups:
       - alert: ApiLatencyHigh
         expr: |
           histogram_quantile(0.95, sum by (le) (
-            rate(tastify_http_request_duration_seconds_bucket{job="api"}[10m])
+            rate(soniqueo_http_request_duration_seconds_bucket{job="api"}[10m])
           )) > 1
         for: 15m
         labels: { severity: warning }
@@ -52,7 +52,7 @@ groups:
 
       - alert: SlowDatabase
         expr: |
-          histogram_quantile(0.95, sum by (le) (rate(tastify_db_query_duration_seconds_bucket[10m]))) > 0.25
+          histogram_quantile(0.95, sum by (le) (rate(soniqueo_db_query_duration_seconds_bucket[10m]))) > 0.25
         for: 15m
         labels: { severity: warning }
         annotations:
@@ -61,19 +61,19 @@ groups:
   - name: background
     rules:
       - alert: BackgroundJobsFailing
-        expr: sum by (task) (increase(tastify_background_jobs_total{outcome="failure"}[30m])) > 3
+        expr: sum by (task) (increase(soniqueo_background_jobs_total{outcome="failure"}[30m])) > 3
         labels: { severity: warning }
         annotations:
           summary: "Background task {{ $labels.task }} failed repeatedly"
 
       - alert: EmailNotDelivered
-        expr: sum(increase(tastify_emails_total{outcome=~"failed|queue_failed"}[1h])) > 0
+        expr: sum(increase(soniqueo_emails_total{outcome=~"failed|queue_failed"}[1h])) > 0
         labels: { severity: warning }
         annotations:
           summary: "Password reset or verification e-mail could not be delivered"
 
       - alert: BackupTooOld
-        expr: time() - max(tastify_backup_last_success_timestamp_seconds) > 26 * 3600
+        expr: time() - max(soniqueo_backup_last_success_timestamp_seconds) > 26 * 3600
         for: 30m
         labels: { severity: critical }
         annotations:
@@ -83,15 +83,15 @@ groups:
     rules:
       - alert: ProviderErrors
         expr: |
-          sum by (provider) (rate(tastify_provider_requests_total{outcome="error"}[15m]))
-            / clamp_min(sum by (provider) (rate(tastify_provider_requests_total[15m])), 1e-9) > 0.2
+          sum by (provider) (rate(soniqueo_provider_requests_total{outcome="error"}[15m]))
+            / clamp_min(sum by (provider) (rate(soniqueo_provider_requests_total[15m])), 1e-9) > 0.2
         for: 15m
         labels: { severity: warning }
         annotations:
           summary: "More than 20% of calls to {{ $labels.provider }} fail"
 
       - alert: WebAppErrors
-        expr: sum(increase(tastify_client_errors_total[15m])) > 20
+        expr: sum(increase(soniqueo_client_errors_total[15m])) > 20
         labels: { severity: warning }
         annotations:
           summary: "The web app reports many errors in browsers"

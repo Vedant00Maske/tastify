@@ -18,12 +18,12 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "TASTIFY"
+    app_name: str = "SONIQUEO"
     environment: Literal["local", "test", "staging", "production"] = "local"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     api_v1_prefix: str = "/api/v1"
 
-    database_url: str = "postgresql+asyncpg://tastify:tastify@127.0.0.1:5432/tastify"
+    database_url: str = "postgresql+asyncpg://soniqueo:soniqueo@127.0.0.1:5432/soniqueo"
     redis_url: str = "redis://127.0.0.1:6379/0"
     celery_broker_url: str = "redis://127.0.0.1:6379/1"
     celery_result_backend: str = "redis://127.0.0.1:6379/2"
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # MusicBrainz/ListenBrainz/MetaBrainz require a User-Agent identifying the app and a contact.
-    metabrainz_user_agent: str = "TASTIFY/0.1.0 ( https://github.com/Vedant00Maske/tastify )"
+    metabrainz_user_agent: str = "SONIQUEO/0.1.0 ( https://github.com/Vedant00Maske/soniqueo )"
 
     # Peers whose X-Forwarded-For header is trusted (the Next.js server proxying /api/v1):
     # addresses or networks, e.g. ["172.16.0.0/12"] for a Docker network.
@@ -75,11 +75,11 @@ class Settings(BaseSettings):
     google_client_id: str | None = None
     google_client_secret: str | None = None
     # Daily YouTube Data API budget (default project quota 10,000 units; reset at midnight
-    # Pacific time). TASTIFY stops before an operation would exceed it.
+    # Pacific time). SONIQUEO stops before an operation would exceed it.
     youtube_daily_quota: int = 10_000
 
     # Recommendation logs (Milestone 6) are personal data: kept this many days, then pruned
-    # (`python -m tastify_ml experiments prune`).
+    # (`python -m soniqueo_ml experiments prune`).
     recommendation_log_retention_days: int = 90
 
     # --- Production hardening (Milestone 7; DEPLOYMENT.md, ADR-020) ------------------------
@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_security: Literal["starttls", "tls", "none"] = "starttls"
-    mail_from: str = "TASTIFY <no-reply@tastify.invalid>"
+    mail_from: str = "SONIQUEO <no-reply@soniqueo.invalid>"
     password_reset_minutes: int = 60
     email_verification_hours: int = 48
 
@@ -158,7 +158,7 @@ class Settings(BaseSettings):
             problems.append("APP_PUBLIC_URL is not https")
         if not self.session_cookie_secure:
             problems.append("session cookies are not Secure (SESSION_COOKIE_SECURE_OVERRIDE)")
-        if ":tastify@" in self.database_url:
+        if ":soniqueo@" in self.database_url:
             problems.append("DATABASE_URL uses the development password")
         if not self.mail_enabled:
             problems.append("SMTP_HOST is not set: password reset e-mails cannot be sent")

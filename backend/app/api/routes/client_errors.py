@@ -18,7 +18,7 @@ from app.core import metrics
 from app.core.logging import redact
 from app.domains.auth import rate_limit
 
-logger = logging.getLogger("tastify.client")
+logger = logging.getLogger("soniqueo.client")
 
 router = APIRouter(prefix="/client-errors", tags=["telemetry"])
 

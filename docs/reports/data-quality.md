@@ -1,6 +1,6 @@
 # Catalogue data quality report
 
-Generated 2026-11-16 13:01 UTC by `python -m tastify_ml catalogue quality`.
+Generated 2026-11-16 13:01 UTC by `python -m soniqueo_ml catalogue quality`.
 
 ## Catalogue
 

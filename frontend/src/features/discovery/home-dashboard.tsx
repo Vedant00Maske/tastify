@@ -60,7 +60,7 @@ function Hero() {
       <EmptyState
         icon={Sparkles}
         title="Your mix is warming up"
-        description="Like, save or play a few tracks and TASTIFY will build a mix around them."
+        description="Like, save or play a few tracks and SONIQUEO will build a mix around them."
         action={
           <Button asChild variant="secondary">
             <Link href="/discover">Start discovering</Link>
@@ -330,7 +330,7 @@ export function HomeDashboard() {
           {name ? `, ${name}` : ""}
         </h1>
         <p className="mt-1 text-fg-secondary">
-          Here is what TASTIFY found for you today.
+          Here is what SONIQUEO found for you today.
         </p>
       </header>
       <Hero />

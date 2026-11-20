@@ -20,10 +20,10 @@ from app.domains.recommendations.models import (
     TrackPopularity,
 )
 from app.domains.recommendations.service import RecommendationService
-from tastify_ml.recommendation.catalogue_data import load_catalogue
-from tastify_ml.recommendation.popularity import compute_popularity
-from tastify_ml.recommendation.publish import VersionSpec, publish_content, publish_popularity
-from tastify_ml.recommendation.retrieval_benchmark import run_retrieval_benchmark
+from soniqueo_ml.recommendation.catalogue_data import load_catalogue
+from soniqueo_ml.recommendation.popularity import compute_popularity
+from soniqueo_ml.recommendation.publish import VersionSpec, publish_content, publish_popularity
+from soniqueo_ml.recommendation.retrieval_benchmark import run_retrieval_benchmark
 from tests.recommendation_fixtures import T0, listens
 
 pytestmark = pytest.mark.integration

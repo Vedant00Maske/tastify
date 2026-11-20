@@ -9,12 +9,12 @@
 # host (use an SSH tunnel).
 
 # A separate project name: never share volumes with the development stack (docker-compose.yml).
-name: tastify-prod
+name: soniqueo-prod
 
 x-backend: &backend
   # Built once (by the migrate service below) or pulled when BACKEND_IMAGE names a registry
   # image; every backend service runs the same image.
-  image: ${BACKEND_IMAGE:-tastify-backend:local}
+  image: ${BACKEND_IMAGE:-soniqueo-backend:local}
   restart: unless-stopped
   env_file:
     - path: .env.production
@@ -22,7 +22,7 @@ x-backend: &backend
   environment: &backend-env
     ENVIRONMENT: ${ENVIRONMENT:-production}
     LOG_FORMAT: json
-    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-tastify}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tastify}
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-soniqueo}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-soniqueo}
     REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
     CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
     CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
@@ -49,7 +49,7 @@ services:
       - "${HTTPS_PORT:-443}:443"
       - "${HTTPS_PORT:-443}:443/udp"
     environment:
-      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS, e.g. tastify.example.com}
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS, e.g. soniqueo.example.com}
       CADDY_TRUSTED_PROXIES: ${CADDY_TRUSTED_PROXIES:-127.0.0.1/32}
     volumes:
       - ./infrastructure/deployment/Caddyfile:/etc/caddy/Caddyfile:ro
@@ -66,7 +66,7 @@ services:
     networks: [internal]
 
   frontend:
-    image: ${FRONTEND_IMAGE:-tastify-frontend:local}
+    image: ${FRONTEND_IMAGE:-soniqueo-frontend:local}
     build:
       context: ./frontend
       target: prod
@@ -161,9 +161,9 @@ services:
     image: pgvector/pgvector:pg17
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-tastify}
+      POSTGRES_USER: ${POSTGRES_USER:-soniqueo}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-tastify}
+      POSTGRES_DB: ${POSTGRES_DB:-soniqueo}
     command:
       - postgres
       - -c
@@ -219,9 +219,9 @@ services:
     entrypoint: ["/bin/sh", "/scripts/backup.sh"]
     environment:
       PGHOST: postgres
-      PGUSER: ${POSTGRES_USER:-tastify}
+      PGUSER: ${POSTGRES_USER:-soniqueo}
       PGPASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB:-tastify}
+      PGDATABASE: ${POSTGRES_DB:-soniqueo}
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
     volumes:

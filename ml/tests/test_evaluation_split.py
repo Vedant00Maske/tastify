@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tastify_ml.evaluation.experiment import data_end
-from tastify_ml.evaluation.split import build_task, temporal_split
+from soniqueo_ml.evaluation.experiment import data_end
+from soniqueo_ml.evaluation.split import build_task, temporal_split
 from tests.recommendation_fixtures import T0, listens
 
 ITEMS = pd.Series({"a": 0, "b": 1, "c": 2, "d": 3, "e": 4})

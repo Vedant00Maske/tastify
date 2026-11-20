@@ -1,7 +1,7 @@
 [project]
-name = "tastify-ml"
+name = "soniqueo-ml"
 version = "0.1.0"
-description = "TASTIFY offline data pipelines, recommendation models and evaluation."
+description = "SONIQUEO offline data pipelines, recommendation models and evaluation."
 requires-python = ">=3.11"
 # Dependencies are pinned in requirements.txt and requirements-dev.txt (see ADR-011, ADR-012).
 
@@ -19,7 +19,7 @@ ignore = ["PD011"]
 "tests/**" = ["S101", "S311"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["tastify_ml", "app"]
+known-first-party = ["soniqueo_ml", "app"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -52,7 +52,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["tastify_ml"]
+source = ["soniqueo_ml"]
 branch = true
 
 [tool.coverage.report]

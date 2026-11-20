@@ -258,7 +258,7 @@ async def test_spotify_oauth_import_and_token_refresh(
             "track": {"id": "sp-505", "name": "505", "artists": [{"name": "Arctic"}]},
         }
     ]
-    # The stored access token has been revoked on Spotify's side: TASTIFY refreshes once.
+    # The stored access token has been revoked on Spotify's side: SONIQUEO refreshes once.
     fakes.spotify.access = "rotated-elsewhere"
     imported = await client.post("/api/v1/integrations/spotify/import", json={"consent": True})
     assert imported.status_code == 200, imported.text
@@ -345,7 +345,7 @@ async def test_lost_remote_playlist_is_found_again_by_its_marker(
     await connect_listenbrainz(client, fakes)
     playlist = await make_playlist(client, world, ["Creep"])
     await client.post(f"/api/v1/playlists/{playlist}/export", json={"provider": "listenbrainz"})
-    # TASTIFY lost the remote id (say the process died before saving it).
+    # SONIQUEO lost the remote id (say the process died before saving it).
     await session.execute(text("UPDATE playlist_exports SET external_playlist_id = NULL"))
     await session.commit()
     again = await client.post(

@@ -89,7 +89,7 @@ export function CreatePlaylistDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title="New playlist"
-        description="Start empty, or let TASTIFY fill it for you."
+        description="Start empty, or let SONIQUEO fill it for you."
         className="max-w-lg"
       >
         <form noValidate onSubmit={submit} className="flex flex-col gap-4">

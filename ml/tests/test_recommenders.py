@@ -3,7 +3,7 @@ import numpy.typing as npt
 import scipy.sparse as sp
 
 from app.domains.recommendations.ranking import Candidate, rerank
-from tastify_ml.evaluation.recommenders import (
+from soniqueo_ml.evaluation.recommenders import (
     ContentRecommender,
     GenrePopularityRecommender,
     RandomRecommender,
@@ -12,7 +12,7 @@ from tastify_ml.evaluation.recommenders import (
     popularity_ranking,
     trending_ranking,
 )
-from tastify_ml.evaluation.split import EvaluationTask
+from soniqueo_ml.evaluation.split import EvaluationTask
 
 
 def task(history: list[list[int]], seeds: list[int], n_items: int) -> EvaluationTask:

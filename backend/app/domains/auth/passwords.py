@@ -59,4 +59,4 @@ def needs_rehash(password_hash: str) -> bool:
 
 
 # Verified against when the e-mail is unknown, so a login takes the same time either way.
-DUMMY_HASH = _hasher.hash("tastify-timing-equalizer")
+DUMMY_HASH = _hasher.hash("soniqueo-timing-equalizer")

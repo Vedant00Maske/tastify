@@ -1,6 +1,6 @@
-# TASTIFY edge proxy (docker-compose.prod.yml; DEPLOYMENT.md, ADR-020).
+# SONIQUEO edge proxy (docker-compose.prod.yml; DEPLOYMENT.md, ADR-020).
 #
-# SITE_ADDRESS is the public domain (e.g. tastify.example.com): Caddy obtains and renews its
+# SITE_ADDRESS is the public domain (e.g. soniqueo.example.com): Caddy obtains and renews its
 # HTTPS certificate automatically and redirects HTTP to HTTPS. For a local or CI smoke test it
 # can be ":80" (plain HTTP, no certificate).
 #

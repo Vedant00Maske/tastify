@@ -22,7 +22,7 @@ _SECRET_PATTERNS = [
     (
         re.compile(
             r"(?i)\b(access_token|refresh_token|id_token|token|code|state|password|secret"
-            r"|client_secret|api_key|tastify_session)=([^&\s\"',;]+)"
+            r"|client_secret|api_key|soniqueo_session)=([^&\s\"',;]+)"
         ),
         r"\1=[redacted]",
     ),

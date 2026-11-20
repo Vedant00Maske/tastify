@@ -64,7 +64,7 @@ function Card({
 function errorText(error: unknown): string {
   return error instanceof ApiError
     ? error.message
-    : "Could not reach TASTIFY. Try again.";
+    : "Could not reach SONIQUEO. Try again.";
 }
 
 // --- account ---------------------------------------------------------------------------------
@@ -573,7 +573,7 @@ function PrivacyCard({ preferences }: { preferences: Preferences }) {
     <Card
       id="privacy"
       title="Privacy and your data"
-      description="TASTIFY uses only your own activity to personalize, and never sells or shares it."
+      description="SONIQUEO uses only your own activity to personalize, and never sells or shares it."
     >
       <div className="flex flex-col gap-6">
         <div className="flex items-start justify-between gap-4">
@@ -747,7 +747,7 @@ export function SettingsPage() {
       <DeleteAccountCard />
       <p className="flex items-center gap-2 text-meta text-fg-muted">
         <ShieldCheck className="size-4" aria-hidden /> Your session is kept in a
-        secure, HTTP-only cookie; TASTIFY never stores passwords in your
+        secure, HTTP-only cookie; SONIQUEO never stores passwords in your
         browser.
       </p>
     </PageContainer>

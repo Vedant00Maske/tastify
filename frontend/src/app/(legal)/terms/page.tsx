@@ -10,7 +10,7 @@ export default function TermsPage() {
   return (
     <Prose title="Terms of use" updated="19 November 2026">
       <p>
-        TASTIFY is a personal music discovery service, offered as a free,
+        SONIQUEO is a personal music discovery service, offered as a free,
         non-commercial beta. By creating an account you agree to these terms and
         to the <Link href="/privacy">privacy notice</Link>.
       </p>
@@ -34,15 +34,15 @@ export default function TermsPage() {
           service, or get around its limits.
         </li>
         <li>
-          Do not use TASTIFY to collect data at scale or to build another
+          Do not use SONIQUEO to collect data at scale or to build another
           service.
         </li>
       </ul>
 
       <h2>Music and data</h2>
       <p>
-        TASTIFY shows information about music; it does not host or stream audio.
-        Catalogue data comes from open sources such as MusicBrainz and
+        SONIQUEO shows information about music; it does not host or stream
+        audio. Catalogue data comes from open sources such as MusicBrainz and
         ListenBrainz under their licences, some of which allow non-commercial
         use only. Artwork belongs to its owners. Connected music services apply
         their own terms.

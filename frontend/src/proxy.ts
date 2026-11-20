@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *    -> /login; a session cookie on /login or /register -> /home. The API still verifies the
  *    session on every request; this only avoids rendering a page that would immediately 401.
  */
-const SESSION_COOKIE = "tastify_session";
+const SESSION_COOKIE = "soniqueo_session";
 // Signed-in visitors are sent home from these.
 const AUTH_PAGES = ["/login", "/register", "/forgot-password"];
 // Reachable signed in or not: e-mailed links (the token is the proof) and the legal pages.

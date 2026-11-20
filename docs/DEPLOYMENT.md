@@ -1,6 +1,6 @@
-# TASTIFY — Deployment and Observability
+# SONIQUEO — Deployment and Observability
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§14–15).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§14–15).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## 14. Deployment Architecture
@@ -120,7 +120,7 @@ prometheus ──> api, recommender, worker (/metrics)    grafana, alertmanager 
 | `postgres` | `pgvector/pgvector:pg17` | Tuned via `POSTGRES_*` settings; slow statements (over 1 s) logged. |
 | `redis` | `redis:7.4-alpine` | Password, append-only persistence, `volatile-lru` eviction (only expiring keys: never the job queue). |
 | `backup` | `pgvector/pgvector:pg17` | `infrastructure/backup/backup.sh`: daily dumps, retention, health check on backup age. |
-| `prometheus`, `alertmanager`, `grafana` | pinned images, profile `monitoring` | Metrics, 11 alert rules, the "TASTIFY overview" dashboard; on `127.0.0.1` only. |
+| `prometheus`, `alertmanager`, `grafana` | pinned images, profile `monitoring` | Metrics, 11 alert rules, the "SONIQUEO overview" dashboard; on `127.0.0.1` only. |
 
 Containers run as non-root users with read-only root filesystems and `no-new-privileges`; logs
 rotate (5 × 20 MB per container). Images pin numerical libraries to one thread per process
@@ -155,7 +155,7 @@ datasets. A snapshot moves them to a new deployment; user data is never included
 
 ```bash
 # On the build machine (development database):
-docker exec -i tastify-postgres-1 sh -s export - < infrastructure/backup/catalogue.sh > catalogue.dump
+docker exec -i soniqueo-postgres-1 sh -s export - < infrastructure/backup/catalogue.sh > catalogue.dump
 # On the server (a deployment without users; the import refuses otherwise):
 docker compose -f docker-compose.prod.yml --env-file .env.production cp catalogue.dump backup:/backups/catalogue.dump
 docker compose -f docker-compose.prod.yml --env-file .env.production exec backup sh /scripts/catalogue.sh import /backups/catalogue.dump
@@ -194,16 +194,16 @@ status and duration. Secrets are masked before writing.
 
 | Spec metric | Metric |
 | --- | --- |
-| Request count, error rate | `tastify_http_requests_total{method,route,status}` |
-| API latency | `tastify_http_request_duration_seconds` |
-| Database query latency | `tastify_db_query_duration_seconds{operation}` |
-| Cache hit rate | `tastify_cache_requests_total{cache,result}` (response cache, genre members, popularity rankings, model artifacts, genre profiles) |
-| Background job failures | `tastify_background_jobs_total{task,outcome}`, `tastify_emails_total` |
-| External provider failures | `tastify_provider_requests_total{provider,outcome}` |
-| Candidate generation time, ranking latency | `tastify_recommendation_stage_seconds{surface,stage}` |
-| Number of candidates retrieved | `tastify_recommendation_candidates{surface}` |
-| Model version distribution | `tastify_recommendations_served_total{surface,model_version}` |
-| Feedback conversion inputs | `tastify_feedback_events_total{event_type,attributed}` with served items; per-experiment conversion: `python -m tastify_ml experiments report` |
+| Request count, error rate | `soniqueo_http_requests_total{method,route,status}` |
+| API latency | `soniqueo_http_request_duration_seconds` |
+| Database query latency | `soniqueo_db_query_duration_seconds{operation}` |
+| Cache hit rate | `soniqueo_cache_requests_total{cache,result}` (response cache, genre members, popularity rankings, model artifacts, genre profiles) |
+| Background job failures | `soniqueo_background_jobs_total{task,outcome}`, `soniqueo_emails_total` |
+| External provider failures | `soniqueo_provider_requests_total{provider,outcome}` |
+| Candidate generation time, ranking latency | `soniqueo_recommendation_stage_seconds{surface,stage}` |
+| Number of candidates retrieved | `soniqueo_recommendation_candidates{surface}` |
+| Model version distribution | `soniqueo_recommendations_served_total{surface,model_version}` |
+| Feedback conversion inputs | `soniqueo_feedback_events_total{event_type,attributed}` with served items; per-experiment conversion: `python -m soniqueo_ml experiments report` |
 | Also | requests in flight, rate-limit refusals, overload, web app errors, backup age |
 
 Recommendation coverage, diversity and the user-experience metrics (save rate, acceptance, skip

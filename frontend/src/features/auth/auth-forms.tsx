@@ -49,7 +49,7 @@ export function safeNext(next: string | null, fallback = "/home"): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return fallback;
   if (/[\\\u0000-\u001f\u007f]/.test(next)) return fallback;
   try {
-    const base = "https://tastify.invalid";
+    const base = "https://soniqueo.invalid";
     const resolved = new URL(next, base);
     if (resolved.origin !== base) return fallback;
     return `${resolved.pathname}${resolved.search}${resolved.hash}`;
@@ -65,7 +65,7 @@ export function FormError({ error }: { error: unknown }) {
       ? error.status === 429
         ? "Too many attempts. Wait a few minutes and try again."
         : error.message
-      : "Could not reach TASTIFY. Check your connection and try again.";
+      : "Could not reach SONIQUEO. Check your connection and try again.";
   return (
     <p
       role="alert"
@@ -155,7 +155,7 @@ export function LoginForm() {
         </Button>
       </form>
       <p className="mt-6 text-support text-fg-secondary">
-        New to TASTIFY?{" "}
+        New to SONIQUEO?{" "}
         <Link
           href="/register"
           className="font-semibold text-accent hover:underline"
@@ -274,7 +274,7 @@ export function RegisterForm() {
             >
               privacy notice
             </Link>
-            : TASTIFY stores what I play, like and skip to personalize my
+            : SONIQUEO stores what I play, like and skip to personalize my
             recommendations, and I can export or delete it at any time.
           </span>
         </label>

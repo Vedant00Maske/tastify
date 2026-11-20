@@ -1,4 +1,4 @@
-# TASTIFY: Operations runbook
+# SONIQUEO: Operations runbook
 
 How to deploy, roll back, restore, rotate secrets and respond to alerts. Architecture and first
 installation: [DEPLOYMENT.md](DEPLOYMENT.md). Design: [ADR-020](ADR/ADR-020-production-hardening.md).
@@ -43,7 +43,7 @@ sh scripts/deploy.sh "$(cat .deployed.previous)"
 ```
 
 If the release you are leaving ran a migration that is not backwards compatible (it should not
-have), restore the pre-deploy backup instead (below): the newest `tastify-*.dump` before the
+have), restore the pre-deploy backup instead (below): the newest `soniqueo-*.dump` before the
 deploy time.
 
 ## Backups
@@ -53,7 +53,7 @@ deploy time.
 - One now: `dc exec backup sh /scripts/backup.sh --once`
 - List: `dc exec backup ls -lh /backups`
 - **Copy them off the server** daily (another region or provider), encrypted, for example:
-  `docker run --rm -v tastify-prod_backups:/b alpine tar -C /b -cf - . | age -r <key> > backups.tar.age`
+  `docker run --rm -v soniqueo-prod_backups:/b alpine tar -C /b -cf - . | age -r <key> > backups.tar.age`
   then upload. A backup that only exists on the same disk does not survive the server.
 - **Back up `INTEGRATIONS_TOKEN_KEY` separately** (a password manager): database backups contain
   provider tokens encrypted with it.
@@ -71,7 +71,7 @@ Restores the newest backup into a scratch database, compares it with the live on
 
 1. Stop writers: `dc stop api recommender worker beat`
 2. Restore (replaces the live database):
-   `dc exec backup sh /scripts/restore.sh /backups/tastify-<time>.dump tastify --replace`
+   `dc exec backup sh /scripts/restore.sh /backups/soniqueo-<time>.dump soniqueo --replace`
 3. Bring the schema to the running release: `dc run --rm migrate`
 4. Start: `dc up -d --wait api recommender worker beat`
 5. Flush cached recommendations (they describe the old state):
@@ -91,9 +91,9 @@ volume, restore as above, then `sh scripts/deploy.sh <version>`.
 | Secret | Rotate | Effect |
 | --- | --- | --- |
 | `INTEGRATIONS_TOKEN_KEY` | Put the old key in `INTEGRATIONS_TOKEN_PREVIOUS_KEYS='["<old>"]'`, set a new key, redeploy, run `dc run --rm api python -m app.cli rotate-token-key`, then remove the old key and redeploy | None; connections keep working. If the key is lost, users reconnect their services. |
-| `POSTGRES_PASSWORD` | `dc exec postgres psql -U tastify -c "ALTER USER tastify PASSWORD '<new>'"`, update `.env.production`, `dc up -d --force-recreate` | Seconds of unavailability |
+| `POSTGRES_PASSWORD` | `dc exec postgres psql -U soniqueo -c "ALTER USER soniqueo PASSWORD '<new>'"`, update `.env.production`, `dc up -d --force-recreate` | Seconds of unavailability |
 | `REDIS_PASSWORD` | Update `.env.production`, `dc up -d --force-recreate redis api recommender worker beat` | Rate-limit counters and cached mixes reset |
-| Session compromise (everyone signs in again) | `dc exec postgres psql -U tastify -c "UPDATE user_sessions SET revoked_at = now() WHERE revoked_at IS NULL"` | All users signed out |
+| Session compromise (everyone signs in again) | `dc exec postgres psql -U soniqueo -c "UPDATE user_sessions SET revoked_at = now() WHERE revoked_at IS NULL"` | All users signed out |
 | SMTP, Spotify, Google, Sentry credentials | Rotate at the provider, update `.env.production`, redeploy | None |
 
 After any suspected leak: rotate first, then investigate (logs carry request ids, never secrets).
@@ -106,12 +106,12 @@ After any suspected leak: rotate first, then investigate (logs carry request ids
 | `HighErrorRate` | Grafana "Requests per second by status"; `dc logs api recommender \| grep '"level": "ERROR"'`; each error line has a `request_id` matching the client's `X-Request-ID` and the error-tracking event. |
 | `ServiceOverloaded` | Every database connection is busy. Add replicas (`API_REPLICAS`, `RECOMMENDER_REPLICAS`) if CPU allows, or raise `DB_POOL_SIZE` within `POSTGRES_MAX_CONNECTIONS`. |
 | `RecommendationLatencyHigh` | Grafana "Ranking stages" (candidates vs ranking) and "Cache hit rate". Low hit rate: is the worker running (precompute)? High candidate time: `SlowDatabase`. CPU-bound: add recommender replicas. |
-| `ApiLatencyHigh`, `SlowDatabase` | `dc exec postgres psql -U tastify -c "SELECT round(mean_exec_time) ms, calls, left(query, 120) FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10"`. Slow statements over 1 s are also in the PostgreSQL log. |
+| `ApiLatencyHigh`, `SlowDatabase` | `dc exec postgres psql -U soniqueo -c "SELECT round(mean_exec_time) ms, calls, left(query, 120) FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10"`. Slow statements over 1 s are also in the PostgreSQL log. |
 | `BackgroundJobsFailing` | `dc logs worker --tail 200`. Mail jobs retry for about a day on their own. |
 | `EmailNotDelivered` | Check the SMTP account and `SMTP_*` settings; users can request a new link. |
 | `BackupTooOld` | `dc logs backup`; disk space (`df -h`); run one now. |
 | `ProviderErrors` | The provider may be down or have changed: see INTEGRATIONS.md; only that provider's features are affected. |
-| `WebAppErrors` | `dc logs api \| grep tastify.client` (message, page, digest); the digest matches a Next.js server log line. |
+| `WebAppErrors` | `dc logs api \| grep soniqueo.client` (message, page, digest); the digest matches a Next.js server log line. |
 
 ## Routine
 
@@ -128,5 +128,5 @@ After any suspected leak: rotate first, then investigate (logs carry request ids
 Users can export and delete everything themselves (Settings → Privacy). If someone cannot sign
 in and asks for deletion, verify they control the address (a password reset proves it), or
 delete by e-mail after verification:
-`dc exec postgres psql -U tastify -c "DELETE FROM users WHERE email = lower('<address>')"`
+`dc exec postgres psql -U soniqueo -c "DELETE FROM users WHERE email = lower('<address>')"`
 (cascades to all their data; backups age out within `BACKUP_KEEP_DAYS`).

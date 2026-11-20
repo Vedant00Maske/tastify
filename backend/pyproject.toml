@@ -1,7 +1,7 @@
 [project]
-name = "tastify-backend"
+name = "soniqueo-backend"
 version = "0.1.0"
-description = "TASTIFY API, domain services and background workers."
+description = "SONIQUEO API, domain services and background workers."
 requires-python = ">=3.11"
 # Dependencies are pinned in requirements.txt and requirements-dev.txt (see ADR-011).
 # This file holds project metadata and tool configuration only.

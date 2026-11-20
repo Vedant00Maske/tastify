@@ -72,7 +72,7 @@ function timezoneHeader(): Record<string, string> {
 }
 
 /**
- * Typed JSON request to the TASTIFY API. Sends cookies (session auth), serializes JSON bodies,
+ * Typed JSON request to the SONIQUEO API. Sends cookies (session auth), serializes JSON bodies,
  * validates the response with `schema` when given, and throws ApiError with the API's message.
  */
 export async function apiFetch<T>(

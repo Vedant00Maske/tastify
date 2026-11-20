@@ -5,7 +5,7 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
-from tastify_ml.recommendation.catalogue_data import CatalogueData
+from soniqueo_ml.recommendation.catalogue_data import CatalogueData
 
 T0 = pd.Timestamp("2026-11-01", tz="UTC")
 

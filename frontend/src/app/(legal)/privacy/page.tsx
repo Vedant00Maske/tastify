@@ -6,7 +6,7 @@ import { Prose } from "@/features/legal/prose";
 export const metadata: Metadata = { title: "Privacy notice" };
 
 /**
- * What TASTIFY stores and why, written from what the code actually does (docs/SECURITY.md).
+ * What SONIQUEO stores and why, written from what the code actually does (docs/SECURITY.md).
  * The operator of a deployment must add their identity and contact details and have this text
  * reviewed for their jurisdiction before opening it to the public (docs/RUNBOOK.md).
  */
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
   return (
     <Prose title="Privacy notice" updated="19 November 2026">
       <p>
-        TASTIFY recommends music from your own listening. To do that it keeps a
+        SONIQUEO recommends music from your own listening. To do that it keeps a
         record of what you play, like and skip. This notice explains exactly
         what is stored, why, for how long, and how you stay in control.
       </p>
@@ -59,7 +59,7 @@ export default function PrivacyPage() {
 
       <h2>Why</h2>
       <p>
-        Only to run TASTIFY for you: sign you in, make and explain your
+        Only to run SONIQUEO for you: sign you in, make and explain your
         recommendations, keep your playlists, and keep the service secure and
         working. We do not sell your data, show advertising or build profiles
         for anyone else.
@@ -124,8 +124,8 @@ export default function PrivacyPage() {
 
       <h2>Contact</h2>
       <p>
-        Questions or requests about your data go to the operator of this TASTIFY
-        service.
+        Questions or requests about your data go to the operator of this
+        SONIQUEO service.
       </p>
     </Prose>
   );

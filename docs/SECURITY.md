@@ -1,6 +1,6 @@
-# TASTIFY — Security and Privacy
+# SONIQUEO — Security and Privacy
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§12).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§12).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## 12. Security and Privacy Architecture
@@ -56,7 +56,7 @@ Design: [ADR-017](ADR/ADR-017-authentication-and-user-application.md).
   parameters change). Login answers unknown e-mails and wrong passwords identically, with the
   same work (a dummy hash), so it does not reveal which e-mails have accounts.
 - **Sessions.** A 256-bit random token per login, stored only as a SHA-256 hash, sent as the
-  `tastify_session` cookie: `HttpOnly` (no JavaScript access, nothing in `localStorage`),
+  `soniqueo_session` cookie: `HttpOnly` (no JavaScript access, nothing in `localStorage`),
   `SameSite=Lax`, `Secure` outside local development and tests. Sessions last 30 days and are
   extended while in use; logout revokes the session, a password change revokes every other one.
 - **CSRF.** State-changing requests with an `Origin` that is not one of `CORS_ORIGINS` are
@@ -97,7 +97,7 @@ Design: [ADR-017](ADR/ADR-017-authentication-and-user-application.md).
   and can delete everything imported. Exported playlists are created private.
 - **Recommendation logs (Milestone 6, ADR-019).** What was recommended to whom is personal data:
   it is included in the data export, deleted with the account, and pruned after
-  `RECOMMENDATION_LOG_RETENTION_DAYS` (90 by default; `python -m tastify_ml experiments prune`).
+  `RECOMMENDATION_LOG_RETENTION_DAYS` (90 by default; `python -m soniqueo_ml experiments prune`).
   Experiment assignment is computed from a hash and stores nothing extra. Prompts are kept only
   in these logs. The browser's time zone is sent with requests to support context features; it
   is not stored on its own.

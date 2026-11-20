@@ -36,9 +36,9 @@ is latency going?
 
 Option 3.
 
-**Context, measured offline** (`python -m tastify_ml context`,
+**Context, measured offline** (`python -m soniqueo_ml context`,
 [context-benchmark.md](../reports/context-benchmark.md); method in
-`ml/tastify_ml/evaluation/context_experiment.py`, sharing `app/domains/recommendations/context.py`
+`ml/soniqueo_ml/evaluation/context_experiment.py`, sharing `app/domains/recommendations/context.py`
 with the API):
 
 - *Time of day:* research users' UTC offsets are inferred from their quietest four hours (7,448 of
@@ -71,7 +71,7 @@ Feedback can carry the `request_id`. Experiments live in `experiments` (surface,
 variants with parameters); users are assigned by hashing (experiment, user), so assignment is
 stable and stores nothing. The report compares positive (like, save, playlist add) and negative
 (dislike) feedback per shown item with Wilson intervals and a two-proportion z-test, and refuses a
-verdict below 1,000 items per variant. Managed with `python -m tastify_ml experiments …`.
+verdict below 1,000 items per variant. Managed with `python -m soniqueo_ml experiments …`.
 Logs are personal data: included in the data export, deleted with the account, pruned after
 `RECOMMENDATION_LOG_RETENTION_DAYS` (90).
 

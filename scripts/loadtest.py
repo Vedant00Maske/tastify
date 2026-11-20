@@ -1,4 +1,4 @@
-"""Load test for the TASTIFY API (Milestone 7; docs/reports/load-test.md).
+"""Load test for the SONIQUEO API (Milestone 7; docs/reports/load-test.md).
 
 Simulates signed-in listeners: each virtual user registers, plays and likes some popular tracks
 (so recommendations are personal, not cold start), then loops over realistic actions with think

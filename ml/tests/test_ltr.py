@@ -7,8 +7,13 @@ import pytest
 
 from app.domains.recommendations.features import FEATURE_NAMES, FEATURES
 from app.domains.recommendations.hybrid_ranking import TreeEnsembleRanker
-from tastify_ml.recommendation.lineage import lineage, most_restrictive
-from tastify_ml.recommendation.ltr import LambdaRankConfig, RankingData, fit_platt, train_lambdarank
+from soniqueo_ml.recommendation.lineage import lineage, most_restrictive
+from soniqueo_ml.recommendation.ltr import (
+    LambdaRankConfig,
+    RankingData,
+    fit_platt,
+    train_lambdarank,
+)
 
 
 def synthetic(queries: int, seed: int) -> tuple[list[np.ndarray], list[np.ndarray]]:

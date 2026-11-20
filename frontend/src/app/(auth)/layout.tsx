@@ -32,7 +32,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             and <span className="text-accent">surprises you.</span>
           </p>
           <p className="mt-4 max-w-md text-fg-secondary">
-            TASTIFY learns your taste from what you play, like and skip, and
+            SONIQUEO learns your taste from what you play, like and skip, and
             explains every recommendation it makes.
           </p>
         </div>

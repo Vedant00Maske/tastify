@@ -19,7 +19,7 @@ OAuth callback codes), and rate limits only on sign-in and registration.
 
 ## Problem
 
-How is TASTIFY deployed, scaled, observed and recovered with the fewest moving parts that still
+How is SONIQUEO deployed, scaled, observed and recovered with the fewest moving parts that still
 meet the spec's targets, without weakening its privacy guarantees (no third-party scripts in the
 browser, no personal data in logs or error reports)?
 

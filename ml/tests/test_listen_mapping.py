@@ -4,12 +4,12 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from tastify_ml.data.ingestion.listenbrainz_listens import LISTEN_SCHEMA
-from tastify_ml.data.ingestion.musicbrainz_canonical import (
+from soniqueo_ml.data.ingestion.listenbrainz_listens import LISTEN_SCHEMA
+from soniqueo_ml.data.ingestion.musicbrainz_canonical import (
     build_key_mapping,
     iter_canonical_batches,
 )
-from tastify_ml.data.normalization.listen_mapping import (
+from soniqueo_ml.data.normalization.listen_mapping import (
     map_listens,
     recording_popularity,
     unique_listen_keys,

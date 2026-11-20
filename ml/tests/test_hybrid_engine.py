@@ -9,18 +9,18 @@ from app.domains.recommendations.candidate_generation import SOURCE_ORDER
 from app.domains.recommendations.features import FEATURES
 from app.domains.users.events import EventType, TrackSignals, aggregate_events
 from app.domains.users.profile import TasteProfileConfig
-from tastify_ml.evaluation.experiment import genre_affinity_matrix, song_keys
-from tastify_ml.evaluation.hybrid_engine import (
+from soniqueo_ml.evaluation.experiment import genre_affinity_matrix, song_keys
+from soniqueo_ml.evaluation.hybrid_engine import (
     CandidateEngine,
     HybridConfig,
     ItemFacts,
     train_period_models,
 )
-from tastify_ml.recommendation.catalogue_data import CatalogueData
-from tastify_ml.recommendation.collaborative import ALSConfig, ItemItemConfig
-from tastify_ml.recommendation.content_assets import ContentAssets, nearest_neighbours
-from tastify_ml.recommendation.popularity import PopularityConfig
-from tastify_ml.recommendation.signals import compute_signals
+from soniqueo_ml.recommendation.catalogue_data import CatalogueData
+from soniqueo_ml.recommendation.collaborative import ALSConfig, ItemItemConfig
+from soniqueo_ml.recommendation.content_assets import ContentAssets, nearest_neighbours
+from soniqueo_ml.recommendation.popularity import PopularityConfig
+from soniqueo_ml.recommendation.signals import compute_signals
 from tests.recommendation_fixtures import T0, listens, make_catalogue
 
 CONFIG = HybridConfig(

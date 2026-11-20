@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * TASTIFY design tokens (Frontend Design System v1.0, §2). Dark-first, electric lime accent.
+ * SONIQUEO design tokens (Frontend Design System v1.0, §2). Dark-first, electric lime accent.
  * Spec token -> utility: background -> bg-background, text-primary -> text-fg,
  * text-secondary -> text-fg-secondary, text-muted -> text-fg-muted, accent -> bg-accent / text-accent.
  */

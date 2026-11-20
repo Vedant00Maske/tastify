@@ -1,7 +1,7 @@
 """Users, interactions, taste profiles and hybrid recommendation models (Milestone 3).
 
 Downgrade deletes the `collaborative` and `hybrid` model versions (derived data, republishable
-with `python -m tastify_ml personalize publish`) before restoring the old model_type constraint.
+with `python -m soniqueo_ml personalize publish`) before restoring the old model_type constraint.
 
 Revision ID: a28199fd7847
 Revises: 6ec567b027d8

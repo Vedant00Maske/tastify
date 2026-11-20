@@ -1,7 +1,7 @@
 """Recommendation model registry and the serving data each model publishes (docs/DATABASE.md).
 
-Models are trained offline (ADR-008) by `python -m tastify_ml recommend` (Milestone 2:
-popularity, content) and `python -m tastify_ml personalize` (Milestone 3: collaborative, hybrid).
+Models are trained offline (ADR-008) by `python -m soniqueo_ml recommend` (Milestone 2:
+popularity, content) and `python -m soniqueo_ml personalize` (Milestone 3: collaborative, hybrid).
 Publishing a version
 writes its serving rows, marks it active and removes the rows of the version it replaces, so each
 model type has exactly one active version and the vector indexes only ever hold active vectors.

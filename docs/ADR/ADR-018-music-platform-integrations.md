@@ -5,7 +5,7 @@
 
 ## Context
 
-Milestone 5 connects TASTIFY to ListenBrainz, MusicBrainz, Spotify (where permitted) and
+Milestone 5 connects SONIQUEO to ListenBrainz, MusicBrainz, Spotify (where permitted) and
 YouTube (spec §10, ADR-006). Acceptance criteria: provider-specific failures are isolated,
 tokens are securely managed, playlist export is retry-safe, provider quotas are respected.
 
@@ -28,7 +28,7 @@ respected? What happens when a provider is down?
    database leak exposes every linked account, and provider failures surface anywhere.
 2. **A background job queue for every provider operation.** Robust for very large imports, but
    needs a running worker (Celery has no Windows pool) and a polling UI for operations that take
-   seconds at TASTIFY's sizes.
+   seconds at SONIQUEO's sizes.
 3. **Adapters with declared capabilities, synchronous bounded operations, encrypted tokens, an
    idempotent event import and a stateful export record.**
 
@@ -54,8 +54,8 @@ Option 3.
   Disconnecting can delete them again. Each run is recorded (`provider_imports`).
 - **Exports** keep one `playlist_exports` row per playlist and provider. The remote playlist id is
   saved before any item is written; a re-export (or a retry after a failure) reuses it, finds it
-  again by a `[tastify:<id>]` marker in its description if the id was lost, and only then creates
-  one. Items are made equal to the TASTIFY playlist with each provider's safest primitive
+  again by a `[soniqueo:<id>]` marker in its description if the id was lost, and only then creates
+  one. Items are made equal to the SONIQUEO playlist with each provider's safest primitive
   (Spotify `PUT` replace, ListenBrainz delete-then-add, YouTube diff). Exported playlists are
   private.
 - **Quotas.** YouTube units are reserved atomically in Redis (Lua) per Pacific-time day before

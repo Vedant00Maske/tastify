@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from tastify_ml.data.ingestion.listenbrainz_metadata import parse_recording
+from soniqueo_ml.data.ingestion.listenbrainz_metadata import parse_recording
 
 # Shape of a real /1/metadata/recording/ response entry (trimmed).
 PAYLOAD = {

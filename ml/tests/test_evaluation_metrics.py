@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from tastify_ml.evaluation import metrics
+from soniqueo_ml.evaluation import metrics
 
 
 def test_accuracy_metrics_match_hand_computed_values() -> None:

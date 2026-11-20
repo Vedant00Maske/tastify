@@ -7,7 +7,7 @@ when the provider rejects them; a connection that cannot be refreshed is marked
 `reauth_required` instead of failing repeatedly.
 Exports: one `playlist_exports` row per playlist and provider remembers the remote playlist,
 which is created at most once (looked up again by a marker in its description if the id was
-lost) and then made equal to the TASTIFY playlist, so retrying an export is always safe.
+lost) and then made equal to the SONIQUEO playlist, so retrying an export is always safe.
 """
 
 import base64
@@ -85,8 +85,8 @@ DESCRIPTIONS = {
     "Spotify library.",
     "youtube": "Export playlists as private YouTube playlists (up to 50 tracks; YouTube's API "
     "quota is small).",
-    "musicbrainz": "Open music encyclopedia behind the TASTIFY catalogue. Used to find "
-    "recordings TASTIFY does not have yet; no account needed.",
+    "musicbrainz": "Open music encyclopedia behind the SONIQUEO catalogue. Used to find "
+    "recordings SONIQUEO does not have yet; no account needed.",
 }
 ORDER = ("listenbrainz", "spotify", "youtube", "musicbrainz")
 
@@ -131,7 +131,7 @@ def event_id(provider: str, key: str) -> str:
 
 
 def export_marker(playlist_id: uuid.UUID) -> str:
-    return f"[tastify:{playlist_id}]"
+    return f"[soniqueo:{playlist_id}]"
 
 
 def _import_out(run: ProviderImport) -> ImportOut:
@@ -592,7 +592,7 @@ class IntegrationService:
         marker = export_marker(playlist.id)
         description = " ".join(
             part
-            for part in ("Exported from TASTIFY.", (playlist.description or "").strip(), marker)
+            for part in ("Exported from SONIQUEO.", (playlist.description or "").strip(), marker)
             if part
         )
 

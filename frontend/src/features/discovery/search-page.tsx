@@ -75,7 +75,7 @@ function TrackResults({ query, limit }: { query: string; limit?: number }) {
 }
 
 /**
- * Recordings TASTIFY does not have yet, found on MusicBrainz on request (it allows one request
+ * Recordings SONIQUEO does not have yet, found on MusicBrainz on request (it allows one request
  * per second for the whole app, so it is never searched on every keystroke).
  */
 function MusicBrainzResults({ query }: { query: string }) {
@@ -86,7 +86,7 @@ function MusicBrainzResults({ query }: { query: string }) {
       <div className="flex flex-wrap items-center gap-3 rounded-card border border-dashed border-border p-4">
         <p className="flex-1 text-support text-fg-secondary">
           Missing something? Look it up on MusicBrainz, the open music
-          encyclopedia TASTIFY builds on.
+          encyclopedia SONIQUEO builds on.
         </p>
         <Button variant="secondary" size="sm" onClick={() => setAsked(query)}>
           <Search /> Search MusicBrainz
@@ -131,7 +131,7 @@ function MusicBrainzResults({ query }: { query: string }) {
               href={`/tracks/${recording.track_id}`}
               className="shrink-0 text-support font-semibold text-accent hover:underline"
             >
-              In TASTIFY
+              In SONIQUEO
             </Link>
           ) : (
             <a

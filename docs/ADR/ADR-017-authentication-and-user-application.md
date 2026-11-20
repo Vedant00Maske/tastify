@@ -11,7 +11,7 @@ Next.js interface (spec §7 and the Milestone 4 frontend specification). Until n
 took the user id in the path and was served only in local and test environments (ADR-016); it
 must be replaced by authenticated `/users/me/…` routes with ownership checks (spec §12.3).
 
-Constraints: no provider integrations yet (Milestone 5), so TASTIFY cannot play audio; the
+Constraints: no provider integrations yet (Milestone 5), so SONIQUEO cannot play audio; the
 catalogue has MusicBrainz release-group ids but no artwork; the spec asks for no tokens in
 `localStorage`, accessibility, and loading, empty, error and offline states everywhere.
 
@@ -40,7 +40,7 @@ Option 3.
 Passwords: 10–128 characters, no leading or trailing spaces, not the e-mail; hashed with
 Argon2id (`argon2-cffi`, rehashed when parameters change); unknown e-mails are checked against a
 dummy hash so login timing does not reveal accounts. A login creates a 256-bit random token; only
-its SHA-256 hash is stored (`user_sessions`). The cookie `tastify_session` is `HttpOnly`,
+its SHA-256 hash is stored (`user_sessions`). The cookie `soniqueo_session` is `HttpOnly`,
 `SameSite=Lax`, `Path=/`, `Secure` outside local and test, valid 30 days and extended at most
 hourly while in use. Logout revokes the session; a password change revokes every other session;
 account deletion removes the user and everything that cascades from it. Both password
@@ -73,7 +73,7 @@ dislikes, saves and playlist additions until a real audio source exists.
 
 **Artwork.** Track, album and artist artwork is the Cover Art Archive's front image of the
 release group (`coverartarchive.org/release-group/{mbid}/front-500`), loaded by the browser
-through the Next.js image optimizer and cached there, never stored by TASTIFY. Cover art is the
+through the Next.js image optimizer and cached there, never stored by SONIQUEO. Cover art is the
 rights holders' material, shown as identification of the release (the Cover Art Archive's
 purpose); it can be switched off with `COVER_ART_ENABLED=false`. Every image has a deterministic
 generated cover underneath, shown while loading and when there is no image.

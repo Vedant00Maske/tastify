@@ -5,7 +5,7 @@
 
 ## Context
 
-TASTIFY is an early-stage product built by a small team. It has seven clearly separable domains:
+SONIQUEO is an early-stage product built by a small team. It has seven clearly separable domains:
 users, catalogue, interactions, recommendations, playlists, integrations and ML. Load is unknown and
 expected to be modest at first.
 

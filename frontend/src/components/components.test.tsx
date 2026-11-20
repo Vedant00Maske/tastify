@@ -165,7 +165,7 @@ describe("ExplorationPicker", () => {
   beforeEach(() => vi.stubGlobal("ResizeObserver", ResizeObserverStub));
   afterEach(() => vi.unstubAllGlobals());
 
-  it("describes the chosen balance and can hand it to TASTIFY", () => {
+  it("describes the chosen balance and can hand it to SONIQUEO", () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <ExplorationPicker value="explorer" onChange={onChange} />,
@@ -179,7 +179,7 @@ describe("ExplorationPicker", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: /Let TASTIFY learn it/ }),
+      screen.getByRole("button", { name: /Let SONIQUEO learn it/ }),
     );
     expect(onChange).toHaveBeenCalledWith(null);
 

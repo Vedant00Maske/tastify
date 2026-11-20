@@ -258,7 +258,7 @@ export function OnboardingFlow() {
                 Let&apos;s find <span className="text-accent">your sound.</span>
               </h1>
               <p className="max-w-xl text-lg text-fg-secondary">
-                Tell TASTIFY what you love and how adventurous you feel. It
+                Tell SONIQUEO what you love and how adventurous you feel. It
                 starts personalizing right away, and keeps learning from what
                 you play, like and skip. You can change every answer later in
                 Settings.
@@ -467,7 +467,7 @@ export function OnboardingFlow() {
                 ) : (
                   <EmptyState
                     title="No recommendations yet"
-                    description="Pick a few genres or artists so TASTIFY has something to go on."
+                    description="Pick a few genres or artists so SONIQUEO has something to go on."
                   />
                 )
               ) : (

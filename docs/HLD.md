@@ -1,13 +1,13 @@
-# TASTIFY — High-Level Design
+# SONIQUEO — High-Level Design
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§5, §21).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§5, §21).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## 5. High-Level Design (HLD)
 
 ### 5.1 Architectural Style
 
-TASTIFY will initially use a modular monolith.
+SONIQUEO will initially use a modular monolith.
 
 Reasoning:
 
@@ -144,7 +144,7 @@ Responsibilities:
 
 The following principles govern the entire project:
 
-1. Recommendation intelligence belongs to TASTIFY, not external music platforms.
+1. Recommendation intelligence belongs to SONIQUEO, not external music platforms.
 2. No provider-specific assumptions should leak into the core recommendation domain.
 3. Every recommendation model must be evaluated against a baseline.
 4. Every user interaction must have a clearly defined meaning.
@@ -157,7 +157,7 @@ The following principles govern the entire project:
 
 ### Final Product Goal
 
-TASTIFY should become a working, publicly accessible music discovery product that demonstrates end-to-end Machine Learning Engineering:
+SONIQUEO should become a working, publicly accessible music discovery product that demonstrates end-to-end Machine Learning Engineering:
 
 **Data Engineering → Feature Engineering → Model Development → Candidate Retrieval → Ranking → Evaluation → Backend Integration → Frontend → Deployment → Real User Feedback.**
 

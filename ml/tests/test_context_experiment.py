@@ -10,7 +10,7 @@ from app.domains.recommendations.context import (
     daypart,
     daypart_distribution,
 )
-from tastify_ml.evaluation.context_experiment import (
+from soniqueo_ml.evaluation.context_experiment import (
     Listens,
     cross_entropy,
     dayparts_of,
@@ -83,7 +83,7 @@ def test_context_fit_needs_evidence_and_is_bounded() -> None:
 
 
 def test_window_sums_add_up_the_listens_in_each_window() -> None:
-    from tastify_ml.evaluation.context_experiment import window_sums
+    from soniqueo_ml.evaluation.context_experiment import window_sums
 
     genres = sp.csr_matrix(np.array([[1.0, 0.0], [0.0, 1.0], [0.5, 0.5]]))
     items = np.array([0, 1, 2, 0], dtype=np.int64)

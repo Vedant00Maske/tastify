@@ -7,7 +7,7 @@ from implicit.als import AlternatingLeastSquares
 from implicit.nearest_neighbours import BM25Recommender, bm25_weight
 
 from app.domains.recommendations.candidate_generation.collaborative_candidates import bm25_row
-from tastify_ml.recommendation.collaborative import (
+from soniqueo_ml.recommendation.collaborative import (
     ALSConfig,
     ItemItemConfig,
     bm25_idf,

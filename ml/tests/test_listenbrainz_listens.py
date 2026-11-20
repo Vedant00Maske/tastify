@@ -5,7 +5,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from tastify_ml.data.ingestion.listenbrainz_listens import (
+from soniqueo_ml.data.ingestion.listenbrainz_listens import (
     DumpWindow,
     Pseudonymizer,
     extract_dump,

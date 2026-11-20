@@ -1,6 +1,6 @@
-# TASTIFY — ML Pipeline and Recommendation Engine
+# SONIQUEO — ML Pipeline and Recommendation Engine
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§7–8).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§7–8).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## 7. Data Engineering and ML Pipeline
@@ -235,13 +235,13 @@ Weights must be tuned through experimentation.
 
 ## Implemented pipeline (Milestone 1)
 
-Code lives in `ml/tastify_ml/`. It is run from `ml/` with the backend virtualenv (see DEVELOPMENT.md).
+Code lives in `ml/soniqueo_ml/`. It is run from `ml/` with the backend virtualenv (see DEVELOPMENT.md).
 Sources and licences are listed in DATA_SOURCES.md.
 
 ```bash
-python -m tastify_ml download            # raw files -> ml/data/raw/<source>/ (checksummed, resumable)
-python -m tastify_ml catalogue all       # every stage below, in order
-python -m tastify_ml catalogue <stage>   # a single stage
+python -m soniqueo_ml download            # raw files -> ml/data/raw/<source>/ (checksummed, resumable)
+python -m soniqueo_ml catalogue all       # every stage below, in order
+python -m soniqueo_ml catalogue <stage>   # a single stage
 ```
 
 | Stage | Spec stage | What it does | Output |
@@ -264,8 +264,8 @@ provider identifiers are reused. Use `--force` to reprocess.
 Design: ADR-015. Results: [reports/model-benchmark.md](reports/model-benchmark.md).
 
 ```bash
-python -m tastify_ml recommend all         # evaluate -> publish -> benchmark -> report
-python -m tastify_ml recommend <stage>     # a single stage (--skip-fma to skip the FMA experiment)
+python -m soniqueo_ml recommend all         # evaluate -> publish -> benchmark -> report
+python -m soniqueo_ml recommend <stage>     # a single stage (--skip-fma to skip the FMA experiment)
 ```
 
 | Stage | What it does | Output |
@@ -284,7 +284,7 @@ Models:
 
 Ranking rules (candidate pool, popularity blend, artist cap, one version per song, tag smoothing) live in
 `backend/app/domains/recommendations/ranking.py` and are called by both the API and the evaluation
-(`tastify_ml/evaluation/recommenders.py`), so offline metrics describe the served ranking.
+(`soniqueo_ml/evaluation/recommenders.py`), so offline metrics describe the served ranking.
 
 ## Pipelines and production (Milestone 7)
 
@@ -297,7 +297,7 @@ every cache key includes the model versions.
 
 ## Context experiment (Milestone 6)
 
-`python -m tastify_ml context` asks whether time of day or the current session predicts what a
+`python -m soniqueo_ml context` asks whether time of day or the current session predicts what a
 listener plays, on the research listens, before either is used in ranking. Chronological split
 (train, two validation days, two test days); research users' UTC offsets inferred from their
 quietest hours; genre cross-entropy of held-out listens under the overall profile, a daypart
@@ -305,7 +305,7 @@ profile (local time, UTC and shuffled controls) and a session profile (previous 
 same hour a day earlier as control); shrinkage chosen on validation. Writes
 `docs/reports/context-benchmark.md`. Outcome and the serving decision: ADR-019.
 
-`python -m tastify_ml experiments create|start|stop|report|prune` manages online experiments and
+`python -m soniqueo_ml experiments create|start|stop|report|prune` manages online experiments and
 recommendation log retention (ADR-019).
 
 ## Implemented personalization pipeline (Milestone 3)
@@ -313,8 +313,8 @@ recommendation log retention (ADR-019).
 Design: ADR-016. Results: [reports/hybrid-benchmark.md](reports/hybrid-benchmark.md).
 
 ```bash
-python -m tastify_ml personalize all       # baseline -> evaluate -> publish -> benchmark -> report
-python -m tastify_ml personalize <stage>
+python -m soniqueo_ml personalize all       # baseline -> evaluate -> publish -> benchmark -> report
+python -m soniqueo_ml personalize <stage>
 ```
 
 | Stage | What it does | Output |

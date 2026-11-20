@@ -14,60 +14,60 @@ _LATENCY = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 10.0)
 
 # --- Application ---------------------------------------------------------------------------
 HTTP_REQUESTS = Counter(
-    "tastify_http_requests_total", "HTTP requests handled", ["method", "route", "status"]
+    "soniqueo_http_requests_total", "HTTP requests handled", ["method", "route", "status"]
 )
 HTTP_LATENCY = Histogram(
-    "tastify_http_request_duration_seconds",
+    "soniqueo_http_request_duration_seconds",
     "HTTP request latency",
     ["method", "route"],
     buckets=_LATENCY,
 )
-HTTP_IN_FLIGHT = Gauge("tastify_http_requests_in_flight", "HTTP requests being handled")
+HTTP_IN_FLIGHT = Gauge("soniqueo_http_requests_in_flight", "HTTP requests being handled")
 DB_QUERY_LATENCY = Histogram(
-    "tastify_db_query_duration_seconds",
+    "soniqueo_db_query_duration_seconds",
     "Database statement latency",
     ["operation"],
     buckets=(0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 10.0),
 )
 CACHE_REQUESTS = Counter(
-    "tastify_cache_requests_total", "Cache lookups", ["cache", "result"]
+    "soniqueo_cache_requests_total", "Cache lookups", ["cache", "result"]
 )  # result: hit | miss
 OVERLOADED = Counter(
-    "tastify_overloaded_total", "Requests refused because every database connection was busy"
+    "soniqueo_overloaded_total", "Requests refused because every database connection was busy"
 )
-RATE_LIMITED = Counter("tastify_rate_limited_total", "Requests refused by a rate limit", ["limit"])
+RATE_LIMITED = Counter("soniqueo_rate_limited_total", "Requests refused by a rate limit", ["limit"])
 BACKGROUND_JOBS = Counter(
-    "tastify_background_jobs_total", "Background job outcomes", ["task", "outcome"]
+    "soniqueo_background_jobs_total", "Background job outcomes", ["task", "outcome"]
 )  # outcome: success | failure | retry
 PROVIDER_REQUESTS = Counter(
-    "tastify_provider_requests_total", "Calls to external music services", ["provider", "outcome"]
+    "soniqueo_provider_requests_total", "Calls to external music services", ["provider", "outcome"]
 )  # outcome: ok | rate_limited | error
-EMAILS = Counter("tastify_emails_total", "Outgoing e-mails", ["kind", "outcome"])
-CLIENT_ERRORS = Counter("tastify_client_errors_total", "Errors reported by the web app", ["kind"])
+EMAILS = Counter("soniqueo_emails_total", "Outgoing e-mails", ["kind", "outcome"])
+CLIENT_ERRORS = Counter("soniqueo_client_errors_total", "Errors reported by the web app", ["kind"])
 
 # --- Recommendations -----------------------------------------------------------------------
 RECOMMENDATION_LATENCY = Histogram(
-    "tastify_recommendation_stage_seconds",
+    "soniqueo_recommendation_stage_seconds",
     "Time spent per recommendation stage",
     ["surface", "stage"],  # stage: candidates | ranking | total
     buckets=_LATENCY,
 )
 RECOMMENDATION_CANDIDATES = Histogram(
-    "tastify_recommendation_candidates",
+    "soniqueo_recommendation_candidates",
     "Candidates retrieved per request",
     ["surface"],
     buckets=(0, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000),
 )
 RECOMMENDATIONS_SERVED = Counter(
-    "tastify_recommendations_served_total",
+    "soniqueo_recommendations_served_total",
     "Recommendation responses by surface and model version",
     ["surface", "model_version"],
 )
 RECOMMENDATION_ITEMS = Counter(
-    "tastify_recommendation_items_total", "Recommended items returned", ["surface"]
+    "soniqueo_recommendation_items_total", "Recommended items returned", ["surface"]
 )
 FEEDBACK_EVENTS = Counter(
-    "tastify_feedback_events_total", "Feedback events recorded", ["event_type", "attributed"]
+    "soniqueo_feedback_events_total", "Feedback events recorded", ["event_type", "attributed"]
 )  # attributed: whether the event names the recommendation response it came from
 
 
@@ -88,7 +88,7 @@ class BackupStatusCollector(Collector):
         except (OSError, ValueError):
             value = 0.0
         family = GaugeMetricFamily(
-            "tastify_backup_last_success_timestamp_seconds",
+            "soniqueo_backup_last_success_timestamp_seconds",
             "Unix time of the last successful database backup",
         )
         family.add_metric([], value)

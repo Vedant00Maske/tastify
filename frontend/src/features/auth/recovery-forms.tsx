@@ -271,7 +271,7 @@ export function VerifyEmail() {
           <span role="status">Your address is verified.</span>
         </div>
         <Button asChild size="lg" className="mt-6 w-full">
-          <Link href="/home">Continue to TASTIFY</Link>
+          <Link href="/home">Continue to SONIQUEO</Link>
         </Button>
       </AuthCard>
     );

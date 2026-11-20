@@ -6,7 +6,7 @@
 ## Context
 
 Milestone 2 must let a user name a favourite track and get meaningful similar tracks, plus artist,
-genre and popularity recommendations, with measurable offline evaluation. There are no TASTIFY
+genre and popularity recommendations, with measurable offline evaluation. There are no SONIQUEO
 users yet: the only behavioural data is 14 days of public ListenBrainz listens (6.3M listens,
 39k pseudonymous users), and the only item data is the Milestone 1 catalogue (MusicBrainz genres,
 AcousticBrainz audio features, release metadata). ADR-004 chose pgvector for vector retrieval and
@@ -70,6 +70,6 @@ accuracy (NDCG@10 0.0129 vs 0.0140 at 0.1).
   is the price of a fixed-size vector index.
 - Genre tags are CC BY-NC-SA, so the served content model inherits the non-commercial restriction.
 - Changing the embedding size needs a migration (`vector(128)` is fixed in the schema).
-- Revisit when TASTIFY collects its own interactions (Milestone 3 hybrid ranking and collaborative
+- Revisit when SONIQUEO collects its own interactions (Milestone 3 hybrid ranking and collaborative
   filtering), when the catalogue grows past a few million tracks (HNSW parameters, memory), or if
   content similarity stops beating the popularity baseline on fresh data.

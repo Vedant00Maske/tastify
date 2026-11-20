@@ -306,7 +306,7 @@ export function DiscoverPage() {
     <PageContainer>
       <PageHeading
         title="Discover"
-        description="Browse by genre, follow an artist's radio, or let TASTIFY surprise you."
+        description="Browse by genre, follow an artist's radio, or let SONIQUEO surprise you."
       />
       <SurpriseResult />
 

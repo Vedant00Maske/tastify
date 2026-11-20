@@ -16,7 +16,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: { default: "TASTIFY", template: "%s · TASTIFY" },
+  title: { default: "SONIQUEO", template: "%s · SONIQUEO" },
   description:
     "Personalized music discovery that learns what you enjoy and what you might love next.",
 };

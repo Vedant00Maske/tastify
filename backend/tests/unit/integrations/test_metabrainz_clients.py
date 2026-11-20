@@ -6,7 +6,7 @@ import pytest
 from app.domains.integrations.clients.base import ProviderError, RateLimitedClient
 from app.domains.integrations.clients.metabrainz import ListenBrainzClient, MusicBrainzClient
 
-USER_AGENT = "TASTIFY-test/0.0 ( https://example.org )"
+USER_AGENT = "SONIQUEO-test/0.0 ( https://example.org )"
 
 
 class FakeClock:

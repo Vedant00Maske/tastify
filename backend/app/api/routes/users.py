@@ -79,12 +79,12 @@ async def delete_me(
 
 @router.get("/export", dependencies=[limit(rate_limit.DATA_EXPORT_PER_USER, per="user")])
 async def export_me(session: Session, user: CurrentUser) -> Response:
-    """Everything TASTIFY stores about the user, as a JSON download (spec §12.4)."""
+    """Everything SONIQUEO stores about the user, as a JSON download (spec §12.4)."""
     data = await export_user_data(session, user)
     return Response(
         json.dumps(data, indent=2, default=str),
         media_type="application/json",
-        headers={"Content-Disposition": 'attachment; filename="tastify-export.json"'},
+        headers={"Content-Disposition": 'attachment; filename="soniqueo-export.json"'},
     )
 
 

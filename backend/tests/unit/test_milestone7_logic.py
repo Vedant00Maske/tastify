@@ -27,7 +27,7 @@ from app.domains.integrations.tokens import TokenCipher, TokenDecryptionError
         ("Authorization: Bearer sk-live-123.456", "sk-live-123.456"),
         ('{"password": "hunter2 hunter2"}', "hunter2"),
         ('{"new_password":"p4ss word"}', "p4ss word"),
-        ("cookie tastify_session=Zm9vYmFy; path=/", "Zm9vYmFy"),
+        ("cookie soniqueo_session=Zm9vYmFy; path=/", "Zm9vYmFy"),
         ("refresh_token=rt-1&x=1", "rt-1"),
     ],
 )
@@ -155,7 +155,7 @@ def test_delivery_uses_starttls_and_login(monkeypatch: pytest.MonkeyPatch) -> No
         smtp_port=587,
         smtp_username="mailer",
         smtp_password="pw",  # noqa: S106 - test value
-        mail_from="TASTIFY <no-reply@tastify.example>",
+        mail_from="SONIQUEO <no-reply@soniqueo.example>",
     )
     mail.deliver(reset_email("person@example.com", "TOK", 60), settings)
     smtp = FakeSMTP.instances[0]
@@ -163,8 +163,8 @@ def test_delivery_uses_starttls_and_login(monkeypatch: pytest.MonkeyPatch) -> No
     assert smtp.calls[:2] == ["starttls", "login:mailer"]
     message = smtp.sent[0]
     assert message["To"] == "person@example.com"
-    assert message["From"] == "TASTIFY <no-reply@tastify.example>"
-    assert message["Message-ID"].endswith("@tastify.example>")
+    assert message["From"] == "SONIQUEO <no-reply@soniqueo.example>"
+    assert message["Message-ID"].endswith("@soniqueo.example>")
 
 
 def test_delivery_without_smtp_is_refused() -> None:
@@ -186,5 +186,5 @@ def test_backup_age_metric_reads_the_status_file(tmp_path: Any) -> None:
     assert missing.samples[0].value == 0.0  # no backup yet: the alert fires
     status.write_text("1795100000\n")
     present = next(iter(collector.collect()))
-    assert present.name == "tastify_backup_last_success_timestamp_seconds"
+    assert present.name == "soniqueo_backup_last_success_timestamp_seconds"
     assert present.samples[0].value == 1795100000.0

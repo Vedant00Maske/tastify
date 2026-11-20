@@ -9,7 +9,7 @@ Confirmed against Spotify's February 2026 migration guide (INTEGRATIONS.md):
 - Matching: search `isrc:` (track objects still carry `external_ids.isrc`); otherwise a title and
   artist search whose top results must match exactly. Search returns at most 10 results.
 - Development Mode: the app owner needs Premium and at most 5 allow-listed users may connect;
-  others get 403. TASTIFY never calls Spotify's recommendation or audio-feature endpoints.
+  others get 403. SONIQUEO never calls Spotify's recommendation or audio-feature endpoints.
 """
 
 import base64

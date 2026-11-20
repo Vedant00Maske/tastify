@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from tastify_ml.evaluation import segments
-from tastify_ml.evaluation.split import EvaluationTask
+from soniqueo_ml.evaluation import segments
+from soniqueo_ml.evaluation.split import EvaluationTask
 
 
 def task() -> EvaluationTask:

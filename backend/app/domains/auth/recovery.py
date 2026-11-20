@@ -48,10 +48,10 @@ def _link(path: str, token: str) -> str:
 def reset_email(to: str, token: str, minutes: int) -> Email:
     return Email(
         to=to,
-        subject="Reset your TASTIFY password",
+        subject="Reset your SONIQUEO password",
         kind=PASSWORD_RESET,
         text=(
-            "Someone asked to reset the password of the TASTIFY account for this address.\n\n"
+            "Someone asked to reset the password of the SONIQUEO account for this address.\n\n"
             f"Choose a new password here (the link works once, for {minutes} minutes):\n"
             f"{_link('/reset-password', token)}\n\n"
             "If it wasn't you, ignore this message: your password stays the same.\n"
@@ -62,13 +62,13 @@ def reset_email(to: str, token: str, minutes: int) -> Email:
 def verification_email(to: str, token: str, hours: int) -> Email:
     return Email(
         to=to,
-        subject="Confirm your e-mail address for TASTIFY",
+        subject="Confirm your e-mail address for SONIQUEO",
         kind=EMAIL_VERIFICATION,
         text=(
-            "Confirm that this is your address, so you can always recover your TASTIFY "
+            "Confirm that this is your address, so you can always recover your SONIQUEO "
             "account:\n"
             f"{_link('/verify-email', token)}\n\n"
-            f"The link works once, for {hours} hours. If you did not create a TASTIFY account, "
+            f"The link works once, for {hours} hours. If you did not create a SONIQUEO account, "
             "ignore this message.\n"
         ),
     )

@@ -5,7 +5,7 @@ import pyarrow as pa
 import pytest
 from pydantic import ValidationError
 
-from tastify_ml.data.ingestion import acousticbrainz, fma
+from soniqueo_ml.data.ingestion import acousticbrainz, fma
 from tests.conftest import write_tar_zst
 
 # tracks.csv uses a two-row header (entity, field); echonest.csv a three-row header.

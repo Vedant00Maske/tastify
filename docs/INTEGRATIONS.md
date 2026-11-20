@@ -1,6 +1,6 @@
-# TASTIFY — Music Platform Integrations
+# SONIQUEO — Music Platform Integrations
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§10).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§10).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## 10. Music Platform Integration Design
@@ -105,7 +105,7 @@ Design: [ADR-018](ADR/ADR-018-music-platform-integrations.md). Code:
   remote playlist id before it is filled. Re-exporting updates the same playlist (ListenBrainz:
   remove all items and add them again; Spotify: `PUT` replaces the items; YouTube: insert only the
   missing videos, delete only the extra ones). If the id is lost, the playlist is found again by
-  the `[tastify:<playlist id>]` marker in its description.
+  the `[soniqueo:<playlist id>]` marker in its description.
 - *Quotas are respected.* MetaBrainz services: one request per second, `X-RateLimit-*` headers
   honoured. YouTube: every call reserves its units in a Redis counter that resets at midnight
   Pacific time, and an export whose worst case does not fit in what is left is refused before
@@ -131,7 +131,7 @@ Official documentation:
 - **Development Mode (since 11 February 2026 for new apps, 9 March 2026 for existing ones):** the
   app owner needs an active Premium subscription; at most 5 allow-listed Spotify accounts may use
   the app (others get `403`); up to 25 client ids per developer since July 2026, sharing one quota.
-  Extended quota mode is not affected. TASTIFY explains the `403` to the user.
+  Extended quota mode is not affected. SONIQUEO explains the `403` to the user.
 - **Endpoints used:** `GET /me`, `GET /me/tracks`, `GET /me/player/recently-played`,
   `GET /search` (`isrc:` filter; at most 10 results per request since February 2026),
   `GET /me/playlists`, `POST /me/playlists` (replaces `POST /users/{id}/playlists`),
@@ -154,7 +154,7 @@ Official documentation:
   7,550 units in the worst case, which is why exports are capped at 50 tracks.
 - The Developer Policies limit how long API data may be stored without refreshing it: found
   video ids are re-checked after 30 days.
-- Playlist inserts are not idempotent: TASTIFY lists the playlist's items first and only inserts
+- Playlist inserts are not idempotent: SONIQUEO lists the playlist's items first and only inserts
   what is missing.
 - Source: [quota cost table](https://developers.google.com/youtube/v3/determine_quota_cost).
 
@@ -168,7 +168,7 @@ Official documentation:
 - **Listens:** `GET /1/user/{name}/listens`, newest first, `count` up to 1,000, paged with
   `max_ts` (exclusive). ListenBrainz asks clients to use this endpoint for recent and incremental
   listens only (about ten pages) and its export API (`POST /1/export/`, a ZIP archive) for full
-  histories. TASTIFY imports at most ten pages per run, then continues incrementally; full-history
+  histories. SONIQUEO imports at most ten pages per run, then continues incrementally; full-history
   import through the export API is a later improvement.
 - **Playlists:** `POST /1/playlist/create` with JSPF; the
   `https://musicbrainz.org/doc/jspf#playlist` extension's `public` flag is required; tracks are

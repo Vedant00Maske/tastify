@@ -5,7 +5,7 @@
 
 ## Context
 
-TASTIFY integrates with Spotify, YouTube, ListenBrainz and MusicBrainz. They differ in
+SONIQUEO integrates with Spotify, YouTube, ListenBrainz and MusicBrainz. They differ in
 authentication, capabilities, quotas, identifiers and failure modes. Not every provider supports
 every operation (spec §10.1).
 

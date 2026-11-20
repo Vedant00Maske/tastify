@@ -1,6 +1,6 @@
-# TASTIFY — Low-Level Design
+# SONIQUEO — Low-Level Design
 
-> Derived from the approved specification [TASTIFY_v0.1.md](../TASTIFY_v0.1.md) (§6.1, §6.6, §13).
+> Derived from the approved specification [SONIQUEO_v0.1.md](../SONIQUEO_v0.1.md) (§6.1, §6.6, §13).
 > This file is the maintained version: update it in the same pull request as the code it describes.
 
 ## 6. Low-Level Design (LLD)

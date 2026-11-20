@@ -7,9 +7,9 @@
 #   docker compose -f docker-compose.prod.yml exec backup sh /scripts/verify.sh
 set -eu
 
-SCRATCH=tastify_restore_check
-# shellcheck disable=SC2012 # backup names are ours: tastify-<UTC time>.dump
-latest="$(ls -1t /backups/tastify-*.dump 2>/dev/null | head -n 1)"
+SCRATCH=soniqueo_restore_check
+# shellcheck disable=SC2012 # backup names are ours: soniqueo-<UTC time>.dump
+latest="$(ls -1t /backups/soniqueo-*.dump 2>/dev/null | head -n 1)"
 if [ -z "$latest" ]; then
 	echo "verify: no backup found in /backups" >&2
 	exit 1

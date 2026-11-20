@@ -14,7 +14,7 @@ import zstandard
 
 os.environ["ENVIRONMENT"] = "test"
 os.environ["DATABASE_URL"] = os.environ.get(
-    "TEST_DATABASE_URL", "postgresql+asyncpg://tastify:tastify@127.0.0.1:5432/tastify_test"
+    "TEST_DATABASE_URL", "postgresql+asyncpg://soniqueo:soniqueo@127.0.0.1:5432/soniqueo_test"
 )
 os.environ["REDIS_URL"] = os.environ.get("TEST_REDIS_URL", "redis://127.0.0.1:6379/15")
 

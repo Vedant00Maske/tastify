@@ -24,8 +24,8 @@ PREFIX="$(setting IMAGE_PREFIX)"
 SITE="$(setting APP_PUBLIC_URL)"
 [ -n "$PREFIX" ] || { echo "deploy: set IMAGE_PREFIX in $ENV_FILE (e.g. ghcr.io/owner)" >&2; exit 2; }
 
-export BACKEND_IMAGE="$PREFIX/tastify-backend:$TAG"
-export FRONTEND_IMAGE="$PREFIX/tastify-frontend:$TAG"
+export BACKEND_IMAGE="$PREFIX/soniqueo-backend:$TAG"
+export FRONTEND_IMAGE="$PREFIX/soniqueo-frontend:$TAG"
 COMPOSE="docker compose -f docker-compose.prod.yml --env-file $ENV_FILE"
 
 echo "deploy: $TAG ($BACKEND_IMAGE, $FRONTEND_IMAGE)"

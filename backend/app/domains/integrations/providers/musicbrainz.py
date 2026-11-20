@@ -1,6 +1,6 @@
 """MusicBrainz: public recording search (no account; ADR-018).
 
-Used where the TASTIFY catalogue has no match, to point the user at the recording on
+Used where the SONIQUEO catalogue has no match, to point the user at the recording on
 MusicBrainz. At most one request per second with a descriptive User-Agent (MusicBrainz rules).
 """
 

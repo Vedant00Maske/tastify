@@ -157,7 +157,7 @@ export function TastePage() {
         title="Your taste"
         description={
           data.overview ??
-          "What TASTIFY has learned about your listening, from your own activity only."
+          "What SONIQUEO has learned about your listening, from your own activity only."
         }
       />
 

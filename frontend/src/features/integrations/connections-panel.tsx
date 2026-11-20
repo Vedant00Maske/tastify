@@ -42,7 +42,7 @@ const REASONS: Record<string, string> = {
 
 export function errorText(error: unknown): string {
   if (error instanceof ApiError) return error.message;
-  return "Could not reach TASTIFY. Try again.";
+  return "Could not reach SONIQUEO. Try again.";
 }
 
 function describeImport(run: ImportRun): string {
@@ -94,7 +94,7 @@ function TokenForm({ provider }: { provider: Provider }) {
       <Field
         id={`${provider.provider}-token`}
         label={`${provider.name} user token`}
-        hint="Find it on your ListenBrainz settings page. TASTIFY stores it encrypted."
+        hint="Find it on your ListenBrainz settings page. SONIQUEO stores it encrypted."
         error={connect.error ? errorText(connect.error) : undefined}
       >
         <Input
@@ -147,7 +147,7 @@ function ImportControl({ provider }: { provider: Provider }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           title={`Import from ${provider.name}?`}
-          description={`TASTIFY copies your ${what} from ${provider.name} into your history and uses it to personalize your recommendations. Only tracks in the TASTIFY catalogue are kept. You can delete the imported history again when you disconnect.`}
+          description={`SONIQUEO copies your ${what} from ${provider.name} into your history and uses it to personalize your recommendations. Only tracks in the SONIQUEO catalogue are kept. You can delete the imported history again when you disconnect.`}
         >
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -189,7 +189,7 @@ function DisconnectControl({ provider }: { provider: Provider }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           title={`Disconnect ${provider.name}?`}
-          description="TASTIFY deletes its access to your account. Playlists already exported stay where they are."
+          description="SONIQUEO deletes its access to your account. Playlists already exported stay where they are."
         >
           {imports ? (
             <label className="mb-4 flex items-start gap-3 text-support text-fg-secondary">

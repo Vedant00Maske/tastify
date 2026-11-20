@@ -4,7 +4,30 @@ version = "0.1.0"
 description = "SONIQUEO API, domain services and background workers."
 requires-python = ">=3.11"
 # Dependencies are pinned in requirements.txt and requirements-dev.txt (see ADR-011).
-# This file holds project metadata and tool configuration only.
+# The runtime pins are repeated here for installers that read pyproject.toml rather than
+# requirements.txt (Vercel's Python runtime); tests/unit/test_dependency_pins.py keeps them equal.
+dependencies = [
+  "alembic==1.20.1",
+  "argon2-cffi==25.1.0",
+  "asyncpg==0.32.0",
+  "celery[redis]==5.7.0",
+  "cryptography==50.0.2",
+  "fastapi==0.163.1",
+  "httpx==0.28.1",
+  "numpy==2.4.6",
+  "pgvector==0.5.1",
+  "prometheus-client==0.26.0",
+  "pydantic==2.14.3",
+  "pydantic-settings==2.16.3",
+  "redis==8.1.0",
+  "sentry-sdk[fastapi,celery]==2.74.0",
+  "SQLAlchemy[asyncio]==2.1.8",
+  "uvicorn[standard]==0.54.0",
+]
+
+# Vercel (vercel.json at the repository root): the ASGI application.
+[tool.vercel]
+entrypoint = "app.main:app"
 
 [tool.ruff]
 line-length = 100

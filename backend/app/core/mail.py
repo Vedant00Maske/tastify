@@ -2,8 +2,9 @@
 
 The API never talks to the mail server itself: `CeleryMailer` queues a message and the worker
 delivers it over SMTP, retrying with backoff while the server is unavailable (spec §4,
-retry-safe asynchronous processing). Without SMTP_HOST, `DisabledMailer` refuses, and the
-features that need e-mail say so instead of pretending to work.
+retry-safe asynchronous processing). Deployments without a worker (Vercel) set
+MAIL_DELIVERY=inline: `InlineMailer` sends from the API, without retries. Without SMTP_HOST,
+`DisabledMailer` refuses, and the features that need e-mail say so instead of pretending to work.
 """
 
 import asyncio
@@ -56,9 +57,27 @@ class CeleryMailer:
         metrics.EMAILS.labels(email.kind, "queued").inc()
 
 
+class InlineMailer:
+    """Sends over SMTP inside the API process (MAIL_DELIVERY=inline), for deployments without a
+    Celery worker. A failure is not retried: the user asks for a new link."""
+
+    async def send(self, email: Email) -> None:
+        try:
+            await asyncio.to_thread(deliver, email)
+        except (smtplib.SMTPException, OSError) as error:
+            metrics.EMAILS.labels(email.kind, "failed").inc()
+            logger.warning("%s e-mail not delivered: %s", email.kind, type(error).__name__)
+            raise MailUnavailableError("e-mail could not be sent") from error
+        metrics.EMAILS.labels(email.kind, "sent").inc()
+        logger.info("%s e-mail delivered", email.kind)
+
+
 def get_mailer() -> Mailer:
     """FastAPI dependency (tests override it with a recording mailer)."""
-    return CeleryMailer() if get_settings().mail_enabled else DisabledMailer()
+    settings = get_settings()
+    if not settings.mail_enabled:
+        return DisabledMailer()
+    return InlineMailer() if settings.mail_delivery == "inline" else CeleryMailer()
 
 
 def build_message(email: Email, settings: Settings) -> EmailMessage:

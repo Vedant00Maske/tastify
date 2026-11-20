@@ -7,7 +7,7 @@ import logging
 import os
 import smtplib
 import uuid
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 import pytest
 
@@ -175,6 +175,42 @@ def test_delivery_without_smtp_is_refused() -> None:
 async def test_disabled_mailer_refuses() -> None:
     with pytest.raises(mail.MailUnavailableError):
         await mail.DisabledMailer().send(reset_email("p@example.com", "T", 60))
+
+
+@pytest.mark.parametrize(
+    ("smtp_host", "delivery", "expected"),
+    [
+        (None, "inline", mail.DisabledMailer),
+        ("smtp.example", "queue", mail.CeleryMailer),
+        ("smtp.example", "inline", mail.InlineMailer),
+    ],
+)
+def test_mailer_follows_the_delivery_setting(
+    monkeypatch: pytest.MonkeyPatch,
+    smtp_host: str | None,
+    delivery: Literal["queue", "inline"],
+    expected: type,
+) -> None:
+    settings = Settings(_env_file=None, smtp_host=smtp_host, mail_delivery=delivery)
+    monkeypatch.setattr(mail, "get_settings", lambda: settings)
+    assert isinstance(mail.get_mailer(), expected)
+
+
+async def test_inline_mailer_sends_and_reports_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    FakeSMTP.instances.clear()
+    monkeypatch.setattr(smtplib, "SMTP", FakeSMTP)
+    settings = Settings(_env_file=None, smtp_host="smtp.example", mail_delivery="inline")
+    monkeypatch.setattr(mail, "get_settings", lambda: settings)
+
+    await mail.InlineMailer().send(reset_email("person@example.com", "TOK", 60))
+    assert FakeSMTP.instances[0].sent[0]["To"] == "person@example.com"
+
+    def refuse(*_: Any, **__: Any) -> None:
+        raise smtplib.SMTPServerDisconnected("gone")
+
+    monkeypatch.setattr(smtplib, "SMTP", refuse)
+    with pytest.raises(mail.MailUnavailableError):
+        await mail.InlineMailer().send(reset_email("person@example.com", "TOK", 60))
 
 
 def test_backup_age_metric_reads_the_status_file(tmp_path: Any) -> None:

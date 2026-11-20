@@ -121,6 +121,9 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_security: Literal["starttls", "tls", "none"] = "starttls"
     mail_from: str = "SONIQUEO <no-reply@soniqueo.invalid>"
+    # "queue": the Celery worker delivers, with retries (docker-compose.prod.yml). "inline": the
+    # API sends over SMTP itself, without retries, for deployments with no worker (Vercel).
+    mail_delivery: Literal["queue", "inline"] = "queue"
     password_reset_minutes: int = 60
     email_verification_hours: int = 48
 

@@ -69,18 +69,30 @@ import)
 	fi
 	tables="$(catalogue_tables | paste -sd, -)"
 	echo "catalogue: replacing $(echo "$tables" | tr ',' '\n' | wc -l) tables"
-	# One transaction: the catalogue is never half-loaded. Triggers (foreign keys) are deferred
-	# for the load, which needs a superuser (the compose database user is one).
+	# One transaction: the catalogue is never half-loaded. The catalogue tables' foreign keys are
+	# dropped for the load (genres references itself, so no table order satisfies them) and
+	# re-created afterwards, which checks every loaded row. Unlike disabling triggers
+	# (session_replication_role), this needs only table ownership, not a superuser: hosted
+	# databases such as Neon refuse superuser settings.
 	{
 		echo "BEGIN;"
 		# CASCADE reaches only user tables, which the check above proved empty.
 		echo "TRUNCATE $tables CASCADE;"
-		echo "SET session_replication_role = replica;"
+		echo "CREATE TEMP TABLE catalogue_fks ON COMMIT DROP AS
+			SELECT conrelid::regclass::text AS tbl, conname, pg_get_constraintdef(oid) AS def
+			FROM pg_constraint
+			WHERE contype = 'f' AND conrelid = ANY ('{$tables}'::regclass[]);"
+		echo "SELECT format('ALTER TABLE %s DROP CONSTRAINT %I', tbl, conname) FROM catalogue_fks"
+		echo '\gexec'
 		pg_restore --data-only --no-owner --no-privileges --file=- "$source"
-		echo "SET session_replication_role = DEFAULT;"
+		# pg_restore empties search_path; the saved definitions name tables unqualified.
+		echo "RESET search_path;"
+		echo "SELECT format('ALTER TABLE %s ADD CONSTRAINT %I %s', tbl, conname, def)
+			FROM catalogue_fks"
+		echo '\gexec'
 		echo "COMMIT;"
-		echo "ANALYZE;"
-	} | psql -v ON_ERROR_STOP=1 --quiet
+		echo "ANALYZE $tables;"
+	} | psql -v ON_ERROR_STOP=1 --quiet --output=/dev/null
 	psql -tA -c "SELECT 'tracks', count(*) FROM tracks UNION ALL
 		SELECT 'active models', count(*) FROM model_versions WHERE status = 'active'"
 	echo "catalogue: imported; restart the api and recommender services to drop process caches"

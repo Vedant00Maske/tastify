@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.12-slim AS base
+FROM python:3.15-slim AS base
 # One numerical thread per process: the service scales by processes (replicas), and numpy's
 # BLAS would otherwise start a thread per CPU in every process and oversubscribe the host
 # (measured in the Milestone 7 load test: recommendations became about 40x slower).

@@ -3,8 +3,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { ListPlus, Play, RefreshCw, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageContainer, PageHeading } from "@/components/layout/page";
@@ -150,7 +150,10 @@ function promptError(error: unknown): { message: string; ignored: string[] } {
 
 export function CreatePage() {
   const router = useRouter();
-  const [prompt, setPrompt] = useState("");
+  // A prompt handed over from Home (`/create?prompt=…`) is filled in and run once.
+  const handedOver = useSearchParams().get("prompt")?.trim() ?? "";
+  const [prompt, setPrompt] = useState(handedOver);
+  const ranHandover = useRef(false);
   const [familiarity, setFamiliarity] = useState<number | null>(null);
   const [freshOnly, setFreshOnly] = useState(true);
   const [shown, setShown] = useState<string[]>([]);
@@ -180,6 +183,14 @@ export function CreatePage() {
       exclude_previously_heard: freshOnly,
     });
   };
+
+  useEffect(() => {
+    if (ranHandover.current || handedOver.length < 2) return;
+    ranHandover.current = true;
+    submit();
+    // Once, for the prompt in the URL at arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const result = generate.data;
   const tracks =

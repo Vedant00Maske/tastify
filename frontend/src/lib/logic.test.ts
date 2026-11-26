@@ -134,9 +134,23 @@ describe("player store", () => {
     expect(currentTrack(usePlayer.getState())?.id).toBe("c");
   });
 
+  it("removes a track and keeps the position on the same next track", () => {
+    usePlayer.getState().play(tracks, 2);
+    usePlayer.getState().remove("a");
+    expect(currentTrack(usePlayer.getState())?.id).toBe("c");
+    usePlayer.getState().remove("c");
+    expect(currentTrack(usePlayer.getState())?.id).toBe("d");
+    usePlayer.getState().remove("d");
+    expect(currentTrack(usePlayer.getState())?.id).toBe("b");
+    usePlayer.getState().remove("missing");
+    expect(usePlayer.getState().queue.map((t) => t.id)).toEqual(["b"]);
+    usePlayer.getState().remove("b");
+    expect(currentTrack(usePlayer.getState())).toBeNull();
+  });
+
   it("links out to listen elsewhere", () => {
     const links = listenLinks({ id: "1", title: "Creep", artist: "Radiohead" });
-    expect(links.map((l) => l.label)).toEqual(["YouTube", "MusicBrainz"]);
-    expect(links[0].href).toContain("Radiohead%20Creep");
+    expect(links.map((l) => l.label)).toEqual(["Spotify", "YouTube"]);
+    for (const link of links) expect(link.href).toContain("Radiohead%20Creep");
   });
 });

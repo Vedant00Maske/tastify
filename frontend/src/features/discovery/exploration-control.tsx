@@ -80,7 +80,10 @@ export function ExplorationControl({
             action: {
               label: "Undo",
               onClick: () =>
-                update.mutate({ ...toUpdate(next), exploration_mode: previous }),
+                update.mutate({
+                  ...toUpdate(next),
+                  exploration_mode: previous,
+                }),
             },
           }),
         onError: () =>

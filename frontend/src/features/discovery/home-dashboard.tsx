@@ -462,7 +462,9 @@ function MixHero() {
               </Button>
             </p>
           ) : null}
-          <ExplorationControl effectiveMode={data.composition.exploration_mode} />
+          <ExplorationControl
+            effectiveMode={data.composition.exploration_mode}
+          />
           <MixActions tracks={tracks} />
         </div>
         <Tracklist tracks={tracks} refreshing={refreshing} />
@@ -627,8 +629,7 @@ function SimilarToArtist({
   const similar = useSimilarArtists(artistId);
   const mix = useMixIds();
   const tracks = notInMix(
-    similar.data?.recommendations.map((item) => fromRecommendation(item)) ??
-      [],
+    similar.data?.recommendations.map((item) => fromRecommendation(item)) ?? [],
     mix ?? new Set(),
   );
   if (!mix || !tracks.length) return null;

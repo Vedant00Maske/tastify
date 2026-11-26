@@ -44,3 +44,10 @@ test-results/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Local AI/dev tooling (only used on this machine)
+CLAUDE.md
+.claude/
+.graphifyignore
+graphify-out/
+.impeccable/

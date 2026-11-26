@@ -18,6 +18,10 @@
 #
 # Connection settings: PGHOST, PGUSER, PGPASSWORD, PGDATABASE (inside the postgres container
 # the defaults come from POSTGRES_USER / POSTGRES_DB).
+#
+# CATALOGUE_SKIP_TABLES="raw_records" leaves tables out of an export. raw_records (source
+# payloads, ~80 MB) serve provenance and reprocessing only, never the API: skipping them fits the
+# catalogue into a 0.5 GB hosted database (Vercel deployment, DEPLOYMENT.md).
 set -eu
 
 export PGUSER="${PGUSER:-${POSTGRES_USER:-soniqueo}}"
@@ -29,8 +33,9 @@ playlist_exports provider_connections provider_imports provider_track_ids \
 recommendation_requests recommendation_logs experiments alembic_version"
 
 catalogue_tables() {
+	# $1: further tables to leave out (export only).
 	# shellcheck disable=SC2086 # split the list into one argument per table
-	excluded="$(printf "'%s'," $USER_TABLES)"
+	excluded="$(printf "'%s'," $USER_TABLES ${1:-})"
 	psql -tA -c "SELECT tablename FROM pg_tables WHERE schemaname = 'public'
 		AND tablename NOT IN (${excluded%,}) ORDER BY tablename"
 }
@@ -39,7 +44,9 @@ case "${1:-}" in
 export)
 	target="${2:?usage: catalogue.sh export <file|->}"
 	args=""
-	for table in $(catalogue_tables); do args="$args --table=public.$table"; done
+	for table in $(catalogue_tables "${CATALOGUE_SKIP_TABLES:-}"); do
+		args="$args --table=public.$table"
+	done
 	revision="$(psql -tAc "SELECT version_num FROM alembic_version")"
 	echo "catalogue: exporting at schema revision $revision" >&2
 	# shellcheck disable=SC2086
@@ -62,18 +69,30 @@ import)
 	fi
 	tables="$(catalogue_tables | paste -sd, -)"
 	echo "catalogue: replacing $(echo "$tables" | tr ',' '\n' | wc -l) tables"
-	# One transaction: the catalogue is never half-loaded. Triggers (foreign keys) are deferred
-	# for the load, which needs a superuser (the compose database user is one).
+	# One transaction: the catalogue is never half-loaded. The catalogue tables' foreign keys are
+	# dropped for the load (genres references itself, so no table order satisfies them) and
+	# re-created afterwards, which checks every loaded row. Unlike disabling triggers
+	# (session_replication_role), this needs only table ownership, not a superuser: hosted
+	# databases such as Neon refuse superuser settings.
 	{
 		echo "BEGIN;"
 		# CASCADE reaches only user tables, which the check above proved empty.
 		echo "TRUNCATE $tables CASCADE;"
-		echo "SET session_replication_role = replica;"
+		echo "CREATE TEMP TABLE catalogue_fks ON COMMIT DROP AS
+			SELECT conrelid::regclass::text AS tbl, conname, pg_get_constraintdef(oid) AS def
+			FROM pg_constraint
+			WHERE contype = 'f' AND conrelid = ANY ('{$tables}'::regclass[]);"
+		echo "SELECT format('ALTER TABLE %s DROP CONSTRAINT %I', tbl, conname) FROM catalogue_fks"
+		echo '\gexec'
 		pg_restore --data-only --no-owner --no-privileges --file=- "$source"
-		echo "SET session_replication_role = DEFAULT;"
+		# pg_restore empties search_path; the saved definitions name tables unqualified.
+		echo "RESET search_path;"
+		echo "SELECT format('ALTER TABLE %s ADD CONSTRAINT %I %s', tbl, conname, def)
+			FROM catalogue_fks"
+		echo '\gexec'
 		echo "COMMIT;"
-		echo "ANALYZE;"
-	} | psql -v ON_ERROR_STOP=1 --quiet
+		echo "ANALYZE $tables;"
+	} | psql -v ON_ERROR_STOP=1 --quiet --output=/dev/null
 	psql -tA -c "SELECT 'tracks', count(*) FROM tracks UNION ALL
 		SELECT 'active models', count(*) FROM model_versions WHERE status = 'active'"
 	echo "catalogue: imported; restart the api and recommender services to drop process caches"

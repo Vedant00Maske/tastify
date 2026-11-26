@@ -96,6 +96,9 @@ function item(track: Track, reason: string, discovery = false) {
   };
 }
 
+/** The For You mix: Radiohead and Ween. Tame Impala's tracks stay outside it. */
+export const FOR_YOU = TRACKS.slice(0, 4);
+
 let requestCounter = 0;
 function response(strategy: string, tracks: Track[], reason: string) {
   requestCounter += 1;
@@ -108,17 +111,37 @@ function response(strategy: string, tracks: Track[], reason: string) {
   };
 }
 
-function personalized(strategy: string, tracks: Track[], reason: string) {
+/** Discovery share per exploration mode, as the backend's targets (familiar 0.2, explorer 0.8). */
+const DISCOVERY_TARGET: Record<string, number> = {
+  familiar: 0.2,
+  balanced: 0.5,
+  explorer: 0.8,
+};
+
+function personalized(
+  strategy: string,
+  tracks: Track[],
+  reason: string,
+  mode = "balanced",
+) {
+  const target = DISCOVERY_TARGET[mode] ?? 0.5;
+  const discovery = Math.round(tracks.length * target);
+  const base = response(strategy, tracks, reason);
   return {
-    ...response(strategy, tracks, reason),
+    ...base,
+    // The last `discovery` tracks are the new-to-you ones, so the split matches the composition.
+    recommendations: base.recommendations.map((r, i) => ({
+      ...r,
+      discovery: i >= tracks.length - discovery,
+    })),
     user_id: USER_ID,
     profile_version: "taste-profile-test",
     ranker: "weighted-hybrid",
     composition: {
-      familiar: Math.ceil(tracks.length / 2),
-      discovery: Math.floor(tracks.length / 2),
-      discovery_target: 0.5,
-      exploration_mode: "balanced",
+      familiar: tracks.length - discovery,
+      discovery,
+      discovery_target: target,
+      exploration_mode: mode,
       diversity_policy: "for_you",
     },
     candidate_sources: [],
@@ -512,14 +535,29 @@ export class MockApi {
         personalized: true,
       });
     }
-    if (path === "/recommendations/for-you")
-      return json(
-        personalized(
-          "personalized",
-          TRACKS,
-          "Because you like alternative rock",
-        ),
+    if (path === "/recommendations/for-you") {
+      // Like the backend: an explicit ?exploration= wins over the saved mode; excluded artists
+      // never appear; the session nudge applies after two recent events.
+      const excluded = new Set(
+        this.preferences.excluded_artists.map((a) => a.artist_id),
       );
+      const mode =
+        url.searchParams.get("exploration") ??
+        this.preferences.exploration_mode ??
+        "balanced";
+      // The mix is the first four tracks; the last two are left for the rows below it (Home
+      // never repeats a mix track there). Exploring reorders it, so the tracklist visibly moves.
+      const mix = FOR_YOU.filter((t) => !excluded.has(t.artist_id));
+      return json({
+        ...personalized(
+          "personalized",
+          mode === "explorer" ? [...mix].reverse() : mix,
+          "Because you like alternative rock",
+          mode,
+        ),
+        context: { session_weight: 0.15, session_events: this.events.length },
+      });
+    }
     if (path === "/recommendations/hidden-gems")
       return json(
         personalized("hidden_gems", TRACKS.slice(2, 5), "A hidden gem"),
@@ -570,7 +608,7 @@ export class MockApi {
           {
             seed: summary(TRACKS[0]),
             source: "collaborative_item",
-            recommendations: [item(TRACKS[1], "Listeners of Creep play this")],
+            recommendations: [item(TRACKS[5], "Listeners of Creep play this")],
           },
         ],
       });

@@ -26,6 +26,8 @@ import { useAddToPlaylist, usePlaylists } from "@/features/playlists/queries";
 import { cn } from "@/lib/utils";
 import type { FeedbackState } from "@/types/api";
 
+import { useHideOnDislike } from "./hide-on-dislike";
+
 function Toggle({
   label,
   active,
@@ -63,20 +65,28 @@ function Toggle({
   );
 }
 
-/** Like, dislike and save: explicit feedback that the backend turns into taste signals. */
+/**
+ * Like, dislike and save: explicit feedback that the backend turns into taste signals. Inside a
+ * `HideOnDislikeProvider` a dislike also hides the track (with Undo) instead of only a toast.
+ */
 export function FeedbackButtons({
   trackId,
   title,
+  artist,
+  artistId,
   state,
   requestId,
 }: {
   trackId: string;
   title: string;
+  artist?: string;
+  artistId?: string | null;
   state: FeedbackState;
   /** The recommendation response the track came from (experiment attribution). */
   requestId?: string;
 }) {
   const feedback = useFeedback();
+  const hider = useHideOnDislike();
   const send = (
     eventType: Parameters<typeof feedback.mutate>[0]["eventType"],
     message?: string,
@@ -90,6 +100,26 @@ export function FeedbackButtons({
         onError: () => toast.error("That did not save. Try again."),
       },
     );
+  const dislike = () => {
+    if (state.disliked || !hider || artist === undefined) {
+      send(
+        state.disliked ? "undislike" : "dislike",
+        state.disliked ? undefined : "Got it. You will hear less like this.",
+      );
+      return;
+    }
+    // The collapsed track (with Undo) is the confirmation, so there is no toast.
+    hider.hide({ id: trackId, title, artist, artistId, requestId });
+    feedback.mutate(
+      { trackId, eventType: "dislike", requestId },
+      {
+        onError: () => {
+          hider.restore(trackId);
+          toast.error("That did not save. Try again.");
+        },
+      },
+    );
+  };
   return (
     <div className="flex items-center">
       <Toggle
@@ -104,14 +134,7 @@ export function FeedbackButtons({
           state.disliked ? `Remove dislike of ${title}` : `Dislike ${title}`
         }
         active={state.disliked}
-        onClick={() =>
-          send(
-            state.disliked ? "undislike" : "dislike",
-            state.disliked
-              ? undefined
-              : "Got it. You will hear less like this.",
-          )
-        }
+        onClick={dislike}
       >
         <ThumbsDown className={cn(state.disliked && "fill-current")} />
       </Toggle>

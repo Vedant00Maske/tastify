@@ -18,9 +18,8 @@ import { cn } from "@/lib/utils";
 import { currentTrack, listenLinks, usePlayer } from "@/stores/player";
 
 /**
- * The persistent player bar. Audio playback needs a provider integration (Milestone 5), so this
- * bar says so plainly: it holds the queue and offers "listen on" links, and it never fakes
- * progress or records plays.
+ * The persistent player bar. SONIQUEO does not play audio yet, and this bar says so plainly: it
+ * holds the queue and offers "listen on" links, and it never fakes progress or records plays.
  */
 export function MusicPlayer() {
   const state = usePlayer();
@@ -123,7 +122,7 @@ export function MusicPlayer() {
         </div>
         <div className="hidden items-center gap-2 md:flex">
           <span className="text-meta text-fg-muted">
-            In-app playback arrives with integrations. Listen on
+            SONIQUEO does not play audio yet. Listen on
           </span>
           {links.map((link) => (
             <a

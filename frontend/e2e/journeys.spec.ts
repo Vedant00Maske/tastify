@@ -93,8 +93,9 @@ test("register, onboard and land on a personalized home", async ({
 
   await page.getByRole("button", { name: "Go to my home" }).click();
   await expect(page).toHaveURL(/\/home$/);
-  await expect(page.getByRole("heading", { name: /, Sam$/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Your mix" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Your mix" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Made for your mood" }),
   ).toBeVisible();
@@ -124,19 +125,22 @@ test("like, dislike and save from the dashboard, and play without fake audio", a
   await api.signIn();
   await page.goto("/home");
   await page.waitForLoadState("networkidle");
-  const grid = page.getByRole("list", { name: "Recommended for you" });
+  const mix = page.getByRole("list", { name: "Your mix tracklist" });
   const first = TRACKS[0].title;
+  const disliked = TRACKS[1].title;
 
-  await grid
-    .getByRole("button", { name: `Like ${first}`, exact: true })
-    .click();
+  await mix.getByRole("button", { name: `Like ${first}`, exact: true }).click();
   await expect(
-    grid.getByRole("button", { name: `Unlike ${first}`, exact: true }),
+    mix.getByRole("button", { name: `Unlike ${first}`, exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await grid
-    .getByRole("button", { name: `Dislike ${TRACKS[1].title}`, exact: true })
+  // A dislike hides the track on the spot, with Undo taking focus.
+  await mix
+    .getByRole("button", { name: `Dislike ${disliked}`, exact: true })
     .click();
-  await grid
+  const hidden = mix.getByRole("group", { name: `${disliked} hidden` });
+  await expect(hidden).toBeVisible();
+  await expect(hidden.getByRole("button", { name: "Undo" })).toBeFocused();
+  await mix
     .getByRole("button", { name: `Save ${TRACKS[2].title}`, exact: true })
     .click();
   await expect
@@ -147,10 +151,74 @@ test("like, dislike and save from the dashboard, and play without fake audio", a
   const player = page.getByRole("region", { name: "Player" });
   await expect(player).toContainText(first);
   await expect(player.getByRole("link", { name: "YouTube" })).toBeVisible();
+  // The hidden track is not queued.
+  await player.getByRole("button", { name: "Show queue" }).click();
+  await expect(player.getByRole("list")).not.toContainText(disliked);
   // The player never pretends to play: no playback events are recorded.
   expect(
     api.events.some((e) => ["play", "skip", "complete"].includes(e.event_type)),
   ).toBe(false);
+});
+
+test("steer the mix from home, hide an artist and describe a playlist", async ({
+  page,
+  api,
+}) => {
+  await api.signIn();
+  await page.goto("/home");
+  await page.waitForLoadState("networkidle");
+  const notes = page.getByRole("region", { name: "Your mix" });
+  const mix = page.getByRole("list", { name: "Your mix tracklist" });
+  await expect(notes).toContainText("2 from artists you know, 2 new to you");
+  await expect(mix.getByRole("listitem").first()).toContainText(
+    TRACKS[0].title,
+  );
+  // The rows below never repeat a track from the mix.
+  const gems = page.getByRole("region", { name: "Hidden gems" }).first();
+  await expect(gems).toContainText(TRACKS[4].title);
+  await expect(gems).not.toContainText(TRACKS[2].title);
+
+  // The control saves the preference, and both the sentence and the tracklist follow it.
+  await page
+    .getByRole("radio", { name: "Unexpected discoveries" })
+    .check({ force: true });
+  await expect(page.getByText("Saved to your preferences")).toBeVisible();
+  await expect.poll(() => api.preferences.exploration_mode).toBe("explorer");
+  await expect(notes).toContainText("1 from artists you know, 3 new to you");
+  await expect(mix.getByRole("listitem").first()).toContainText(
+    TRACKS[3].title,
+  );
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: "Saved to your preferences" })
+    .getByRole("button", { name: "Undo" })
+    .click();
+  await expect.poll(() => api.preferences.exploration_mode).toBe("balanced");
+
+  // A hidden track leaves the sentence too: it never opens the mix.
+  await mix
+    .getByRole("button", { name: `Dislike ${TRACKS[0].title}`, exact: true })
+    .click();
+  await expect(notes).toContainText(`Starts with ${TRACKS[1].title}`);
+
+  // Hiding an artist removes every track of theirs from the mix, and focus stays in the list.
+  await page.getByRole("button", { name: "Exclude Radiohead" }).click();
+  await expect
+    .poll(() => api.preferences.excluded_artists.map((a) => a.name))
+    .toEqual(["Radiohead"]);
+  await expect(mix).not.toContainText(TRACKS[1].title);
+  await expect(mix).toBeFocused();
+
+  // Words typed on Home run on the Create page.
+  await page
+    .getByLabel("Describe what you want to hear")
+    .fill("dreamy psychedelic rock");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/create\?prompt=dreamy/);
+  await expect(page.getByLabel("Describe your playlist")).toHaveValue(
+    "dreamy psychedelic rock",
+  );
+  await expect(page.getByText("What SONIQUEO understood")).toBeVisible();
 });
 
 test("discover by genre, surprise me and mood mixes", async ({ page, api }) => {
@@ -373,8 +441,8 @@ test("going offline is announced and feedback is sent on reconnect", async ({
 
   await context.setOffline(true);
   await expect(page.getByText("You are offline.")).toBeVisible();
-  const grid = page.getByRole("list", { name: "Recommended for you" });
-  await grid
+  const mix = page.getByRole("list", { name: "Your mix tracklist" });
+  await mix
     .getByRole("button", { name: `Save ${TRACKS[0].title}`, exact: true })
     .click();
   expect(api.events).toEqual([]);

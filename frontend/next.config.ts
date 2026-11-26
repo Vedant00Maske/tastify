@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
+// Dev-only allowance so impeccable live mode can load.
+const __impeccableLiveDev = isDev ? " http://localhost:8400" : "";
 
 /**
  * Content Security Policy (Milestone 7, ADR-020). Everything the app loads is same-origin: the
@@ -13,11 +15,11 @@ const isDev = process.env.NODE_ENV === "development";
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${__impeccableLiveDev}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  `connect-src 'self'${isDev ? " ws:" : ""}`,
+  `connect-src 'self'${isDev ? " ws:" : ""}${__impeccableLiveDev}`,
   "media-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",

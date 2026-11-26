@@ -9,6 +9,10 @@ import {
   AddToPlaylist,
   FeedbackButtons,
 } from "@/components/feedback/feedback-buttons";
+import {
+  HiddenTrackNotice,
+  useHideOnDislike,
+} from "@/components/feedback/hide-on-dislike";
 import { Pill } from "@/components/ui/states";
 import { cn, formatDuration } from "@/lib/utils";
 import type { FeedbackState } from "@/types/api";
@@ -32,6 +36,10 @@ export function TrackCard({
   showReason?: boolean;
   className?: string;
 }) {
+  const hider = useHideOnDislike();
+  if (hider?.isHidden(track.id)) {
+    return <HiddenTrackNotice track={track} variant="card" />;
+  }
   return (
     <motion.article
       {...hover}
@@ -97,6 +105,8 @@ export function TrackCard({
         <FeedbackButtons
           trackId={track.id}
           title={track.title}
+          artist={track.artist}
+          artistId={track.artistId}
           state={state}
           requestId={track.requestId}
         />
@@ -123,6 +133,10 @@ export function TrackRow({
   showReason?: boolean;
 }) {
   const duration = formatDuration(track.durationMs);
+  const hider = useHideOnDislike();
+  if (hider?.isHidden(track.id)) {
+    return <HiddenTrackNotice track={track} variant="row" />;
+  }
   return (
     <div className="group grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-button px-2 py-2 transition-colors duration-150 hover:bg-surface sm:grid-cols-[2rem_auto_1fr_auto]">
       <span className="hidden text-center text-support text-fg-muted tabular-nums sm:block">
@@ -180,6 +194,8 @@ export function TrackRow({
           <FeedbackButtons
             trackId={track.id}
             title={track.title}
+            artist={track.artist}
+            artistId={track.artistId}
             state={state}
             requestId={track.requestId}
           />
@@ -287,18 +303,24 @@ export function MoodCard({
   moodKey,
   title,
   description,
+  compact = false,
   className,
 }: {
   moodKey: string;
   title: string;
   description: string;
+  /** A shorter landscape tile, for a mood row that sits under other content. */
+  compact?: boolean;
   className?: string;
 }) {
   return (
     <motion.div {...hover} className={className}>
       <Link
         href={`/moods/${moodKey}`}
-        className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-card-lg p-4 shadow-card"
+        className={cn(
+          "group relative flex flex-col justify-end overflow-hidden rounded-card-lg p-4 shadow-card",
+          compact ? "aspect-4/3" : "aspect-4/5",
+        )}
       >
         <div className="absolute inset-0">
           <GeneratedCover seed={`mood-${moodKey}`} />
